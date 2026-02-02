@@ -1,0 +1,48 @@
+{
+  "timestamp": "2026-02-02T14:26:38.986093",
+  "total_images": 6,
+  "results": [
+    {
+      "filename": "ex-1a.jpeg",
+      "training_name": "BASIC TEAMWORKING PRINCIPLES AND PRACTICE, INCLUDING CONFLICT RESOLUTION",
+      "confidence": 0.98,
+      "status": "auto_approved",
+      "raw_text": "Basic teamworking principles and practice, including conflict resolution"
+    },
+    {
+      "filename": "ex-1b.jpeg",
+      "training_name": "BASIC SAFETY TRAINING REVALIDATION",
+      "confidence": 0.959,
+      "status": "auto_approved",
+      "raw_text": "BASIC SAFETY TRAINING Revalidation:"
+    },
+    {
+      "filename": "ex-2.jpeg",
+      "training_name": "SHIP SECURITY OFFICER REVALIDATION",
+      "confidence": 0.998,
+      "status": "auto_approved",
+      "raw_text": "SHIP SECURITY OFFICER Revalidation"
+    },
+    {
+      "filename": "ex-3.jpeg",
+      "training_name": "PROFICIENCY IN SURVIVAL CRAFT AND RESCUE BOATS REVALIDATION",
+      "confidence": 0.764,
+      "status": "needs_review",
+      "raw_text": "PROfiCIENCy In SurVIVaL CRaFt AND REScUE BOATS Revalidation"
+    },
+    {
+      "filename": "ex-4.jpeg",
+      "training_name": "MEDICAL FIRST AID REVALIDATION",
+      "confidence": 0.971,
+      "status": "auto_approved",
+      "raw_text": "MEDICAL FIRST AID Revalidation"
+    },
+    {
+      "filename": "ex-5.jpeg",
+      "training_name": "BASIC SAFETY TRAINING REVALIDATION",
+      "confidence": 0.978,
+      "status": "auto_approved",
+      "raw_text": "BASIC SAFETY TRAINING Revalidation"
+    }
+  ]
+}
