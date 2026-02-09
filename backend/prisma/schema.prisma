@@ -1,0 +1,45 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  username     String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Person {
+  id          String        @id @default(uuid()) @db.Uuid
+  name        String
+  seamancode  String
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  certificates Certificate[]
+
+  @@map("persons")
+}
+
+model Certificate {
+  id              String   @id @default(uuid()) @db.Uuid
+  personId        String   @map("person_id") @db.Uuid
+  certificateName String   @map("certificate_name")
+  fileUrl         String   @map("file_url")
+  uploadedAt      DateTime @default(now()) @map("uploaded_at")
+  
+  // Relationships
+  person          Person   @relation(fields: [personId], references: [id])
+
+  @@map("certificates")
+}
