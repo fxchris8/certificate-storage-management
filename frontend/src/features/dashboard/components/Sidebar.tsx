@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, FileText, Settings, LogOut, Ship } from "lucide-react"
+import { LayoutDashboard, FileText, Settings, LogOut, Ship, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useSignOut } from "@/features/auth/_hooks/useSignOut"
 
 interface SidebarProps {
   collapsed: boolean
@@ -12,6 +13,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
   const location = useLocation()
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const logoutRef = useRef<HTMLDivElement>(null)
+  const { signOut } = useSignOut()
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -30,7 +32,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
   
   const links = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    
+    { name: "Users", href: "/dashboard/users", icon: Users },
   ]
 
   return (
@@ -104,16 +106,14 @@ export function Sidebar({ collapsed }: SidebarProps) {
             )}>
                 <div className="space-y-3">
                     <div className="flex gap-2">
-                  
-                        <Link to="/" className="flex-1">
-                            <Button 
-                                variant="destructive" 
-                                size="sm"
-                                className="w-full h-8 text-xs bg-red-600 hover:bg-red-700 shadow-sm"
-                            >
-                                Sign Out
-                            </Button>
-                        </Link>
+                        <Button 
+                            variant="destructive" 
+                            size="sm"
+                            className="w-full h-8 text-xs bg-red-600 hover:bg-red-700 shadow-sm"
+                            onClick={signOut}
+                        >
+                            Sign Out
+                        </Button>
                     </div>
                 </div>
                 {/* Arrow pointer */}

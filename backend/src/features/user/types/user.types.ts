@@ -1,11 +1,16 @@
 export interface RegisterInputTypes {
-  email: string;
-  firstName: string;
+  username: string;
   password: string;
   password2: string;
 }
 
 export interface LoginInputTypes {
-  email: string;
+  username: string;
   password: string;
 }
+
+export interface UpdateUserInputTypes {
+  username?: string;
+  password?: string;
+}
+

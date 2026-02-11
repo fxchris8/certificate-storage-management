@@ -1,0 +1,49 @@
+version: '3.8'
+
+# Development override for docker-compose.yml
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# NOTE: PostgreSQL service tidak perlu di-override, akan menggunakan
+# konfigurasi dari docker-compose.yml (base file) yang sudah sesuai
+# untuk development maupun production.
+
+services:
+  # PostgreSQL menggunakan config dari docker-compose.yml
+  # Tidak ada perubahan yang diperlukan untuk development
+  # Backend with hot reload
+  backend:
+    restart: unless-stopped
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/prisma:/app/prisma
+      - /app/node_modules
+    command: npm run dev
+
+  # Frontend with hot reload
+  frontend:
+    restart: unless-stopped
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    environment:
+      - VITE_API_URL=http://localhost:5000
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - /app/node_modules
+    command: npm run dev
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+
+  # OCR with auto-reload
+  ocr:
+    volumes:
+      - ./ocr/app:/app/app
+      - ./ocr/samples:/app/samples
+      - ./ocr/results:/app/results
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload

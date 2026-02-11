@@ -29,32 +29,24 @@ const passwordSchema = z
 // Register schema
 export const registerSchema = z
   .object({
-    email: z
+    username: z
       .string()
-      .email({ message: 'Invalid email format' })
-      .nonempty({ message: 'Email is required' }),
-    firstName: z
-      .string()
-      .min(2, { message: 'First name must be at least 2 characters long' })
-      .nonempty({ message: 'First name is required' }),
+      .min(3, { message: 'Username must be at least 3 characters long' })
+      .nonempty({ message: 'Username is required' }),
     password: passwordSchema,
-    password2: z.string().nonempty({ message: 'Password2 is required' }),
-  })
-  .superRefine((data, ctx) => {
-    if (data.password !== data.password2) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['password2'],
-        message: passwordMismatchErrorMessage,
-      });
-    }
   });
 
 // Login schema
 export const loginSchema = z.object({
-  email: z
-    .string()
-    .email({ message: 'Invalid email format' })
-    .nonempty({ message: 'Email is required' }),
+  username: z.string().nonempty({ message: 'Username is required' }),
   password: z.string().nonempty({ message: 'Password is required' }),
+});
+
+// Update User schema
+export const updateUserSchema = z.object({
+  username: z
+    .string()
+    .min(3, { message: 'Username must be at least 3 characters long' })
+    .optional(),
+  password: passwordSchema.optional(),
 });

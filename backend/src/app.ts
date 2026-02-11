@@ -4,6 +4,7 @@ import helmet from 'helmet';
 
 import { env } from './config/env-config';
 import userRoutes from './features/user/routes/user.routes';
+import authRoutes from './features/user/routes/auth.routes';
 import { apiErrorHandler, unmatchedRoutes } from './middleware/api-error.middleware';
 import { pinoLogger, loggerMiddleware } from './middleware/pino-logger';
 // import morgan from 'morgan';
@@ -18,14 +19,10 @@ app.use(helmet());
 
 // Global Middlewares
 app.use(express.json());
-app.use(cors()); // Enables CORS
-
-// TODO: logger
-app.use(loggerMiddleware);
-app.use(pinoLogger);
-// if (process.env.NODE_ENV === 'development') app.use(morgan('dev'));
 
 const allowedURLs = env.WHITE_LIST_URLS || [];
+app.use(cors({ origin: allowedURLs, credentials: true })); // Enables CORS with whitelist
+
 
 app.get('/', hostWhitelist(allowedURLs), (req: Request, res: Response): void => {
   res.json('');
@@ -39,7 +36,8 @@ app.get('/heartbeat', (req: Request, res: Response): void => {
 });
 
 // API Routes
-app.use('/v1/users', userRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/auth', authRoutes);
 
 // Error Handling Middleware (Optional)
 // For prisma error and other error

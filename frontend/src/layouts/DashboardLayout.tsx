@@ -4,9 +4,19 @@ import { Sidebar } from "../features/dashboard/components/Sidebar"
 import { Bell, Search, Menu } from "lucide-react"
 import { cn } from "@/lib/utils"
 
+import { useGetMe } from "@/features/auth/_hooks/useGetMe"
+import { useEffect } from "react"
+
 export function DashboardLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { data: user } = useGetMe()
+
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem("user", JSON.stringify(user))
+    }
+  }, [user])
 
   // Close mobile menu when route changes
   // You might want to add useLocation here if you want that behavior, 
@@ -66,11 +76,13 @@ export function DashboardLayout() {
              
              <div className="flex items-center gap-3 pl-6 border-l border-zinc-200 dark:border-zinc-800">
                  <div className="hidden md:flex flex-col items-end">
-                    <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Bryan SPIL</span>
+                    <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                      {user?.username || "Guest"}
+                    </span>
                     <span className="text-xs text-zinc-500">Admin</span>
                  </div>
                  <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-red-600 to-red-400 flex items-center justify-center text-white font-bold shadow-md shadow-red-500/20">
-                    B
+                    {user?.username?.charAt(0).toUpperCase() || "G"}
                  </div>
              </div>
           </div>

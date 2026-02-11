@@ -1,0 +1,24 @@
+# Development Dockerfile
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY tsconfig.json ./
+COPY prisma ./prisma/
+
+# Install all dependencies (including dev)
+RUN npm install
+
+# Generate Prisma Client
+RUN npx prisma generate
+
+# Copy source (will be overridden by volume in dev)
+COPY src ./src
+
+# Expose port
+EXPOSE 5000
+
+# Development command (can be overridden)
+CMD ["npm", "run", "dev"]

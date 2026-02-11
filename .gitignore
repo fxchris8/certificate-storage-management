@@ -1,0 +1,28 @@
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Docker
+*.log
+docker-compose.override.yml
+
+# Operating System
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Backup files
+*.sql
+backups/
+
+# Node modules (in case of root level)
+node_modules/
+
+# Python cache (in case of root level)
+__pycache__/
+*.pyc

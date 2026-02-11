@@ -5,6 +5,13 @@ import path from 'path'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  server: {
+    host: true, // Listen on all addresses, including LAN and public addresses
+    port: 5173,
+    watch: {
+      usePolling: true,
+    },
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
