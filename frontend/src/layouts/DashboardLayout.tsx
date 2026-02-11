@@ -58,21 +58,11 @@ export function DashboardLayout() {
                 <Menu className="h-5 w-5" />
              </button>
 
-             <div className="relative w-full max-w-sm">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-zinc-400" />
-                <input 
-                    type="text" 
-                    placeholder="Search certificates, seamen..." 
-                    className="h-10 w-full rounded-full border-none bg-zinc-100 pl-10 text-sm focus:ring-0 dark:bg-zinc-900"
-                />
-             </div>
+            
           </div>
           
           <div className="flex items-center space-x-6">
-             <button className="relative text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200">
-                <Bell className="h-5 w-5" />
-                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-600"></span>
-             </button>
+             
              
              <div className="flex items-center gap-3 pl-6 border-l border-zinc-200 dark:border-zinc-800">
                  <div className="hidden md:flex flex-col items-end">

@@ -2,12 +2,17 @@ export const SUCCESS = {
   USER_FOUND: 'User Found',
   REGISTRATION_SUCCESSFUL: 'Registration successful',
   LOGIN_SUCCESSFUL: 'Login successful',
+  PERSON_FOUND: 'Person found',
+  PERSON_CREATED: 'Person created successfully',
+  PERSON_UPDATED: 'Person updated successfully',
+  PERSON_DELETED: 'Person deleted successfully',
 };
 
 export const ERROR = {
   INTERNAL_SERVER_ERROR: 'Internal server error',
   INVALID_USER_DATA: 'Invalid user data',
   USER_NOT_FOUND: 'User not found',
+  PERSON_NOT_FOUND: 'Person not found',
   INVALID_EXPIRED_OTP: 'Invalid/Expired OTP',
   USER_EXISTS_WITH_EMAIL_MOBILE: 'User already exists with the provided Email and Mobile number',
   USER_EXISTS_WITH_EMAIL: 'User already exists with the provided Email',

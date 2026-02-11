@@ -147,26 +147,30 @@ export function UserDashboardPage() {
             <Table>
                 <TableHeader className="bg-zinc-50 dark:bg-zinc-900">
                 <TableRow className="border-b-zinc-100 dark:border-b-zinc-800 hover:bg-zinc-50/50">
+                    <TableHead className="w-[80px] font-semibold">No</TableHead>
                     <TableHead className="font-semibold">Username</TableHead>
                     <TableHead className="font-semibold">Created At</TableHead>
+                    <TableHead className="font-semibold">Updated At</TableHead>
                     <TableHead className="text-right font-semibold">Actions</TableHead>
                 </TableRow>
                 </TableHeader>
                 <TableBody>
                 {filteredUsers.length === 0 ? (
                     <TableRow>
-                        <TableCell colSpan={3} className="text-center h-24 text-zinc-500">
+                        <TableCell colSpan={5} className="text-center h-24 text-zinc-500">
                             No users found.
                         </TableCell>
                     </TableRow>
                 ) : (
-                filteredUsers.map((user: User) => (
+                filteredUsers.map((user: User, index: number) => (
                     <TableRow 
                       key={user.id} 
                       className="border-b-zinc-50 dark:border-b-zinc-900 hover:bg-zinc-50/50"
                     >
+                    <TableCell className="font-medium text-zinc-500">{index + 1}</TableCell>
                     <TableCell className="font-semibold text-zinc-900 dark:text-zinc-100">{user.username}</TableCell>
                     <TableCell className="text-zinc-500">{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-zinc-500">{new Date(user.updatedAt).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

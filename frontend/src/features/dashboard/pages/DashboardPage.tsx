@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
-import { Plus, Download, MoreHorizontal, Filter, Edit, Trash2, Search } from "lucide-react"
+import { Plus, Download, MoreHorizontal, Filter, Edit, Trash2, Search, Loader2 } from "lucide-react"
 import {
   Pagination,
   PaginationContent,
@@ -36,35 +36,45 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-
-// Mock data generator for pagination
-const allSeamen = Array.from({ length: 25 }, (_, i) => ({
-  no: i + 1,
-  nama: `Seafarer ${i + 1}`,
-  seamancode: `SEA${(i + 1).toString().padStart(3, '0')}`,
-}))
+import { useGetPersons } from "@/features/person/_hooks/useGetPersons"
+import { usePostPerson } from "@/features/person/_hooks/usePostPerson"
+import { usePutPerson } from "@/features/person/_hooks/usePutPerson"
+import { useDeletePerson } from "@/features/person/_hooks/useDeletePerson"
+import { useGetStats } from "@/features/person/_hooks/useGetStats"
+import { Person } from "@/features/person/types/person.types"
 
 const ITEMS_PER_PAGE = 5
 
-type Seafarer = {
-  no: number
-  nama: string
-  seamancode: string
+interface PersonFormState {
+  name: string;
+  seamancode: string;
 }
 
 export function DashboardPage() {
+  const { data: persons = [], isLoading, error } = useGetPersons()
+  const { data: stats } = useGetStats()
+  const { mutate: createPerson, isPending: isCreating } = usePostPerson()
+  const { mutate: updatePerson, isPending: isUpdating } = usePutPerson()
+  const { mutate: deletePerson, isPending: isDeleting } = useDeletePerson()
+
   const [currentPage, setCurrentPage] = useState(1)
-  const [newSeafarerName, setNewSeafarerName] = useState("")
-  const [newSeafarerCode, setNewSeafarerCode] = useState("")
-  const [selectedSeafarer, setSelectedSeafarer] = useState<Seafarer | null>(null)
+  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null)
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [formData, setFormData] = useState<PersonFormState>({ name: "", seamancode: "" })
   const navigate = useNavigate()
-  
-  const totalPages = Math.ceil(allSeamen.length / ITEMS_PER_PAGE)
+
+  // Filter by search
+  const filteredPersons = persons.filter((person) =>
+    person.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    person.seamancode.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  // Pagination
+  const totalPages = Math.ceil(filteredPersons.length / ITEMS_PER_PAGE)
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
-  const currentSeamen = allSeamen.slice(startIndex, startIndex + ITEMS_PER_PAGE)
+  const currentPersons = filteredPersons.slice(startIndex, startIndex + ITEMS_PER_PAGE)
 
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
@@ -73,51 +83,54 @@ export function DashboardPage() {
   }
 
   const handleOpenCreate = () => {
-    setSelectedSeafarer(null)
-    setNewSeafarerName("")
-    setNewSeafarerCode("")
+    setSelectedPerson(null)
+    setFormData({ name: "", seamancode: "" })
     setIsEditOpen(true)
   }
 
-  const handleOpenEdit = (seaman: Seafarer) => {
-    setSelectedSeafarer(seaman)
-    setNewSeafarerName(seaman.nama)
-    setNewSeafarerCode(seaman.seamancode)
+  const handleOpenEdit = (person: Person) => {
+    setSelectedPerson(person)
+    setFormData({ name: person.name, seamancode: person.seamancode })
     setIsEditOpen(true)
   }
 
-  const handleOpenDelete = (seaman: Seafarer) => {
-    setSelectedSeafarer(seaman)
+  const handleOpenDelete = (person: Person) => {
+    setSelectedPerson(person)
     setIsDeleteOpen(true)
   }
 
-  const handleSaveSeafarer = (e: React.FormEvent) => {
+  const handleSave = (e: React.FormEvent) => {
     e.preventDefault()
-    if (selectedSeafarer) {
-      console.log("Updating seafarer:", { 
-        ...selectedSeafarer, 
-        nama: newSeafarerName, 
-        seamancode: newSeafarerCode 
+    if (selectedPerson) {
+      updatePerson({
+        id: selectedPerson.id,
+        data: {
+          name: formData.name,
+          seamancode: formData.seamancode,
+        }
+      }, {
+        onSuccess: () => setIsEditOpen(false)
       })
     } else {
-      console.log("Creating seafarer:", { newSeafarerName, newSeafarerCode })
+      createPerson({
+        name: formData.name,
+        seamancode: formData.seamancode,
+      }, {
+        onSuccess: () => setIsEditOpen(false)
+      })
     }
-    setIsEditOpen(false)
-    setNewSeafarerName("")
-    setNewSeafarerCode("")
-    setSelectedSeafarer(null)
   }
 
   const handleConfirmDelete = () => {
-    if (selectedSeafarer) {
-      console.log("Deleting seafarer:", selectedSeafarer)
+    if (selectedPerson) {
+      deletePerson(selectedPerson.id, {
+        onSuccess: () => setIsDeleteOpen(false)
+      })
     }
-    setIsDeleteOpen(false)
-    setSelectedSeafarer(null)
   }
 
-  const handleRowClick = (seaman: Seafarer) => {
-    navigate(`/dashboard/certificates/${seaman.seamancode}`)
+  const handleRowClick = (person: Person) => {
+    navigate(`/dashboard/certificates/${person.seamancode}`)
   }
 
   return (
@@ -128,9 +141,7 @@ export function DashboardPage() {
           <p className="mt-1 text-zinc-500 dark:text-zinc-400">Manage crew members.</p>
         </div>
         <div className="flex gap-3">
-             <Button variant="outline" className="h-10 border-zinc-300 dark:border-zinc-700">
-                <Download className="mr-2 h-4 w-4" /> Export
-            </Button>
+           
             
             <Button 
               onClick={handleOpenCreate}
@@ -138,124 +149,29 @@ export function DashboardPage() {
             >
               <Plus className="mr-2 h-4 w-4" /> Add Seafarer
             </Button>
-            
-            {/* Edit/Create Dialog */}
-            <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-              <DialogContent className="w-[calc(100%-2rem)] sm:max-w-[600px] p-6 overflow-hidden border-0 shadow-2xl rounded-xl">
-                 <DialogHeader className="mb-4">
-                  <DialogTitle className="text-xl font-bold text-zinc-900">
-                    {selectedSeafarer ? "Edit Seafarer" : "Add New Seafarer"}
-                  </DialogTitle>
-                </DialogHeader>
-                
-                <form onSubmit={handleSaveSeafarer} className="space-y-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="name" className="text-sm font-semibold text-zinc-900">
-                        Seafarer Name
-                      </Label>
-                      <Input
-                        id="name"
-                        value={newSeafarerName}
-                        onChange={(e) => setNewSeafarerName(e.target.value)}
-                        className="h-11 bg-white border-zinc-200 transition-all"
-                        placeholder="Enter seafarer full name"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                       <Label htmlFor="code" className="text-sm font-semibold text-zinc-900">
-                        Seaman Code
-                      </Label>
-                      <Input
-                        id="code"
-                        value={newSeafarerCode}
-                        onChange={(e) => setNewSeafarerCode(e.target.value)}
-                        className="h-11 bg-white border-zinc-200 transition-all"
-                        placeholder="Enter seaman code"
-                        required
-                      />
-                  </div>
-
-                  <DialogFooter className="flex flex-row justify-end gap-3 pt-2">
-                     <Button 
-                       type="button" 
-                       variant="outline" 
-                       onClick={() => setIsEditOpen(false)}
-                       className="h-11 px-6 border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900"
-                     >
-                        Cancel
-                     </Button>
-                    <Button type="submit" className="h-11 px-6 bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/20">
-                        {selectedSeafarer ? "Save Changes" : "Save Seafarer"}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-            
-            {/* Delete Confirmation Dialog */}
-            <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-              <DialogContent className="w-[calc(100%-2rem)] sm:max-w-[400px] p-6 overflow-hidden border-0 shadow-2xl rounded-xl">
-                <DialogHeader className="mb-4">
-                  <DialogTitle className="text-xl font-bold text-zinc-900">Delete Seafarer</DialogTitle>
-                </DialogHeader>
-                
-                <p className="text-sm text-zinc-600">
-                  Are you sure you want to delete <span className="font-semibold text-zinc-900">{selectedSeafarer?.nama}</span>? This action cannot be undone.
-                </p>
-
-                <DialogFooter className="flex flex-row justify-end gap-3 pt-4">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => setIsDeleteOpen(false)}
-                    className="h-11 px-6 border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900"
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    type="button"
-                    onClick={handleConfirmDelete}
-                    className="h-11 px-6 bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/20"
-                  >
-                    Delete
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
         </div>
       </div>
 
         {/* Stats Row */}
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2">
             <Card className="border-none shadow-md shadow-zinc-200/50 dark:shadow-zinc-950/50">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Total Seafarers</CardTitle>
                     <div className="h-4 w-4 rounded-full bg-red-100"></div>
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">1,248</div>
-                    <p className="text-xs text-muted-foreground">+4.1% from last month</p>
+                    <div className="text-2xl font-bold">{stats?.totalSeafarers ?? 0}</div>
+                    <p className="text-xs text-muted-foreground">Registered in system</p>
                 </CardContent>
             </Card>
             <Card className="border-none shadow-md shadow-zinc-200/50 dark:shadow-zinc-950/50">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Active Crew</CardTitle>
+                    <CardTitle className="text-sm font-medium">Total Certificates</CardTitle>
                     <div className="h-4 w-4 rounded-full bg-green-100"></div>
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">894</div>
-                    <p className="text-xs text-muted-foreground">Currently on board</p>
-                </CardContent>
-            </Card>
-             <Card className="border-none shadow-md shadow-zinc-200/50 dark:shadow-zinc-950/50">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Expiring Certificates</CardTitle>
-                    <div className="h-4 w-4 rounded-full bg-yellow-100"></div>
-                </CardHeader>
-                <CardContent>
-                    <div className="text-2xl font-bold">23</div>
-                    <p className="text-xs text-muted-foreground text-red-600 font-medium">Action required</p>
+                    <div className="text-2xl font-bold">{stats?.totalCertificates ?? 0}</div>
+                    <p className="text-xs text-muted-foreground">Uploaded documents</p>
                 </CardContent>
             </Card>
         </div>
@@ -267,7 +183,10 @@ export function DashboardPage() {
               <Input
                 placeholder="Search seafarers..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                  setCurrentPage(1)
+                }}
                 className="pl-9 h-10 bg-white border-zinc-200"
               />
             </div>
@@ -276,6 +195,15 @@ export function DashboardPage() {
             </Button>
         </CardHeader>
         <CardContent>
+          {isLoading ? (
+            <div className="flex justify-center p-8">
+              <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
+            </div>
+          ) : error ? (
+            <div className="text-center p-8 text-red-500">
+              Failed to load seafarers.
+            </div>
+          ) : (
           <div className="space-y-4">
             <div className="rounded-md border border-zinc-100 dark:border-zinc-800">
               <Table>
@@ -288,20 +216,26 @@ export function DashboardPage() {
                   </TableRow>
                   </TableHeader>
                   <TableBody>
-                  {currentSeamen.map((seaman) => (
+                  {currentPersons.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center h-24 text-zinc-500">
+                        No seafarers found.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                  currentPersons.map((person, index) => (
                       <TableRow 
-                        key={seaman.seamancode} 
-                        onClick={() => handleRowClick(seaman)}
+                        key={person.id} 
+                        onClick={() => handleRowClick(person)}
                         className="border-b-zinc-50 dark:border-b-zinc-900 hover:bg-zinc-50/50 cursor-pointer"
                       >
-                      <TableCell className="font-medium text-zinc-500">{seaman.no}</TableCell>
-                      <TableCell className="font-semibold text-zinc-900 dark:text-zinc-100">{seaman.nama}</TableCell>
+                      <TableCell className="font-medium text-zinc-500">{startIndex + index + 1}</TableCell>
+                      <TableCell className="font-semibold text-zinc-900 dark:text-zinc-100">{person.name}</TableCell>
                       <TableCell>
                           <span className="inline-flex items-center rounded-md bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-600 ring-1 ring-inset ring-zinc-500/10 dark:bg-zinc-900 dark:text-zinc-400">
-                              {seaman.seamancode}
+                              {person.seamancode}
                           </span>
                       </TableCell>
-                      {/* Removed Position and Status columns */}
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -311,14 +245,14 @@ export function DashboardPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-40">
                             <DropdownMenuItem 
-                              onClick={() => handleOpenEdit(seaman)}
+                              onClick={() => handleOpenEdit(person)}
                               className="cursor-pointer"
                             >
                               <Edit className="mr-2 h-4 w-4" />
                               Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem 
-                              onClick={() => handleOpenDelete(seaman)}
+                              onClick={() => handleOpenDelete(person)}
                               className="cursor-pointer text-red-600 focus:text-red-600"
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
@@ -328,11 +262,12 @@ export function DashboardPage() {
                         </DropdownMenu>
                       </TableCell>
                       </TableRow>
-                  ))}
+                  )))}
                   </TableBody>
               </Table>
             </div>
             
+            {totalPages > 1 && (
             <Pagination>
               <PaginationContent>
                 <PaginationItem>
@@ -364,14 +299,7 @@ export function DashboardPage() {
                 {/* Middle Pages */}
                  {Array.from({ length: totalPages }, (_, i) => i + 1)
                   .filter((page) => {
-                     // Always show first and last, they are handled separately if we strictly follow that pattern,
-                     // but here's a hybrid approach:
-                     // Show if page is within distance of current page, but exclude first and last to avoid dupes
-                     // logic: page is not 1 and not last, and (page is near current)
                      if (page === 1 || page === totalPages) return false
-
-                     // Logic for showing neighbors
-                     // Show p if: current-1 <= p <= current+1
                      return Math.abs(currentPage - page) <= 1
                   })
                   .map((page) => (
@@ -412,9 +340,103 @@ export function DashboardPage() {
                 </PaginationItem>
               </PaginationContent>
             </Pagination>
+            )}
           </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Edit/Create Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="w-[calc(100%-2rem)] sm:max-w-[600px] p-6 overflow-hidden border-0 shadow-2xl rounded-xl">
+           <DialogHeader className="mb-4">
+            <DialogTitle className="text-xl font-bold text-zinc-900">
+              {selectedPerson ? "Edit Seafarer" : "Add New Seafarer"}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <form onSubmit={handleSave} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-sm font-semibold text-zinc-900">
+                  Seafarer Name
+                </Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="h-11 bg-white border-zinc-200 transition-all"
+                  placeholder="Enter seafarer full name"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                 <Label htmlFor="code" className="text-sm font-semibold text-zinc-900">
+                  Seaman Code
+                </Label>
+                <Input
+                  id="code"
+                  value={formData.seamancode}
+                  onChange={(e) => setFormData({...formData, seamancode: e.target.value})}
+                  className="h-11 bg-white border-zinc-200 transition-all"
+                  placeholder="Enter seaman code"
+                  required
+                />
+            </div>
+
+            <DialogFooter className="flex flex-row justify-end gap-3 pt-2">
+               <Button 
+                 type="button" 
+                 variant="outline" 
+                 onClick={() => setIsEditOpen(false)}
+                 className="h-11 px-6 border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900"
+               >
+                  Cancel
+               </Button>
+              <Button 
+                type="submit" 
+                disabled={isCreating || isUpdating}
+                className="h-11 px-6 bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/20"
+              >
+                  {(isCreating || isUpdating) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {selectedPerson ? "Save Changes" : "Save Seafarer"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <DialogContent className="w-[calc(100%-2rem)] sm:max-w-[400px] p-6 overflow-hidden border-0 shadow-2xl rounded-xl">
+          <DialogHeader className="mb-4">
+            <DialogTitle className="text-xl font-bold text-zinc-900">Delete Seafarer</DialogTitle>
+          </DialogHeader>
+          
+          <p className="text-sm text-zinc-600">
+            Are you sure you want to delete <span className="font-semibold text-zinc-900">{selectedPerson?.name}</span>? This action cannot be undone.
+          </p>
+
+          <DialogFooter className="flex flex-row justify-end gap-3 pt-4">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setIsDeleteOpen(false)}
+              className="h-11 px-6 border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900"
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="button"
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+              className="h-11 px-6 bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/20"
+            >
+              {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
