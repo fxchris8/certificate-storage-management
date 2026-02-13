@@ -6,6 +6,10 @@ export const SUCCESS = {
   PERSON_CREATED: 'Person created successfully',
   PERSON_UPDATED: 'Person updated successfully',
   PERSON_DELETED: 'Person deleted successfully',
+  CERTIFICATE_FOUND: 'Certificate found',
+  CERTIFICATE_CREATED: 'Certificate created successfully',
+  CERTIFICATE_UPDATED: 'Certificate updated successfully',
+  CERTIFICATE_DELETED: 'Certificate deleted successfully',
 };
 
 export const ERROR = {
@@ -13,6 +17,7 @@ export const ERROR = {
   INVALID_USER_DATA: 'Invalid user data',
   USER_NOT_FOUND: 'User not found',
   PERSON_NOT_FOUND: 'Person not found',
+  CERTIFICATE_NOT_FOUND: 'Certificate not found',
   INVALID_EXPIRED_OTP: 'Invalid/Expired OTP',
   USER_EXISTS_WITH_EMAIL_MOBILE: 'User already exists with the provided Email and Mobile number',
   USER_EXISTS_WITH_EMAIL: 'User already exists with the provided Email',

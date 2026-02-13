@@ -6,6 +6,7 @@ import { env } from './config/env-config';
 import userRoutes from './features/user/routes/user.routes';
 import authRoutes from './features/user/routes/auth.routes';
 import personRoutes from './features/person/routes/person.routes';
+import certificateRoutes from './features/certificate/routes/certificate.routes';
 import { apiErrorHandler, unmatchedRoutes } from './middleware/api-error.middleware';
 import { pinoLogger, loggerMiddleware } from './middleware/pino-logger';
 // import morgan from 'morgan';
@@ -40,6 +41,7 @@ app.get('/heartbeat', (req: Request, res: Response): void => {
 app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/persons', personRoutes);
+app.use('/api/certificates', certificateRoutes);
 
 // Error Handling Middleware (Optional)
 // For prisma error and other error

@@ -35,6 +35,7 @@ model Certificate {
   id              String   @id @default(uuid()) @db.Uuid
   personId        String   @map("person_id") @db.Uuid
   certificateName String   @map("certificate_name")
+  nomorSertifikat String   @map("nomor_sertifikat")
   fileUrl         String   @map("file_url")
   uploadedAt      DateTime @default(now()) @map("uploaded_at")
   
