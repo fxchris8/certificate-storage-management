@@ -23,7 +23,7 @@ async def extract_training_name(
     if image.content_type not in allowed_types:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid image type. Allowed: {allowed_types}"
+            detail=f"Invalid image type: {image.content_type}. Allowed: {allowed_types}"
         )
 
     try:

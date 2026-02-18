@@ -13,6 +13,7 @@ export const envSchema = z.object({
     .refine(urls => urls.every(url => z.string().url().safeParse(url).success), {
       message: 'Each value in WHITE_LIST_URLS must be a valid URL',
     }),
+  OCR_SERVICE_URL: z.string().url().default('http://ocr:8000'),
 });
 
 export type EnvVars = z.infer<typeof envSchema>;

@@ -1,10 +1,12 @@
 import path from 'path';
 import fs from 'fs-extra';
+// import FormData from 'form-data'; // Use native FormData
 import { unifiedResponse } from 'uni-response';
 
+import { env } from '../../../config/env-config';
 import { SUCCESS, ERROR } from '../../../constants/messages';
 import { CertificateRepository } from '../repositories/certificate.repository';
-import { CreateCertificateInput, UpdateCertificateInput } from '../types/certificate.types';
+import { CreateCertificateInput, UpdateCertificateInput, OcrScanResult, BulkCreateItem } from '../types/certificate.types';
 
 export class CertificateService {
   constructor(private readonly certificateRepository: CertificateRepository) {}
@@ -85,5 +87,80 @@ export class CertificateService {
 
   async downloadCertificateFile(seamanCode: string, nomorSertifikat: string) {
     return this.viewCertificateFile(seamanCode, nomorSertifikat);
+  }
+
+  async scanCertificates(files: Express.Multer.File[]): Promise<OcrScanResult[]> {
+    const ocrUrl = `${env.OCR_SERVICE_URL}/ocr/extract`;
+    const results: OcrScanResult[] = [];
+
+    for (const file of files) {
+      try {
+        const fileBuffer = file.buffer;
+        const blob = new Blob([fileBuffer as unknown as BlobPart], { type: file.mimetype });
+        const formData = new FormData();
+        formData.append('image', blob, file.originalname);
+
+        const response = await fetch(ocrUrl, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`OCR Service Error (${response.status}):`, errorText);
+          results.push({
+            originalName: file.originalname,
+            filePath: '',
+            trainingName: '',
+            confidence: 0,
+            status: 'error',
+          });
+          continue;
+        }
+
+        const data = await response.json() as {
+          success: boolean;
+          data?: { training_name: string; confidence: number; status: string };
+          error?: string;
+        };
+
+        if (data.success && data.data) {
+          results.push({
+            originalName: file.originalname,
+            filePath: '', // File is not saved to disk yet
+            trainingName: data.data.training_name,
+            confidence: data.data.confidence,
+            status: data.data.status,
+          });
+        } else {
+          results.push({
+            originalName: file.originalname,
+            filePath: '',
+            trainingName: '',
+            confidence: 0,
+            status: 'failed',
+          });
+        }
+      } catch (error) {
+        results.push({
+          originalName: file.originalname,
+          filePath: '',
+          trainingName: '',
+          confidence: 0,
+          status: 'error',
+        });
+      }
+    }
+
+    return results;
+  }
+
+  async bulkCreateCertificates(items: BulkCreateItem[]) {
+    const created = [];
+    for (const item of items) {
+      const certificate = await this.certificateRepository.create(item);
+      created.push(certificate);
+    }
+    return unifiedResponse(true, SUCCESS.CERTIFICATE_CREATED, created);
   }
 }

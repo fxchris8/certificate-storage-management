@@ -1,8 +1,26 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { z } from "zod"
 import {
   Table,
   TableBody,
+// ... imports ...
+
+const ITEMS_PER_PAGE = 5
+
+// Zod Schema
+const seafarerSchema = z.object({
+  name: z.string().min(1, "Full Name is required"),
+  seamancode: z.string().min(1, "Seaman Code is required"),
+})
+
+interface PersonFormState {
+  name: string;
+  seamancode: string;
+}
+
+export function DashboardPage() {
+  const { data: persons = [], isLoading, error } = useGetPersons()
   TableCell,
   TableHead,
   TableHeader,
@@ -101,6 +119,13 @@ export function DashboardPage() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault()
+
+    const validation = seafarerSchema.safeParse(formData)
+    if (!validation.success) {
+      alert(`Error: ${validation.error.issues[0].message}`)
+      return
+    }
+
     if (selectedPerson) {
       updatePerson({
         id: selectedPerson.id,

@@ -15,7 +15,29 @@ import { CertificateService } from '../services/certificate.service';
 const uploadDir = path.join(process.cwd(), 'uploads', 'certificates');
 fs.ensureDirSync(uploadDir);
 
-const storage = multer.diskStorage({
+const filter = (_req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  const allowedTypes = /jpeg|jpg|png|pdf/;
+  const extName = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  const mimeType = allowedTypes.test(file.mimetype);
+  if (extName && mimeType) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only .jpeg, .jpg, .png, and .pdf files are allowed'));
+  }
+};
+
+const imageFilter = (_req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  const allowedTypes = /jpeg|jpg|png/;
+  const extName = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  const mimeType = allowedTypes.test(file.mimetype);
+  if (extName && mimeType) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only .jpeg, .jpg, and .png files are allowed for scanning'));
+  }
+};
+
+const diskStorage = multer.diskStorage({
   destination: (_req, _file, cb) => {
     cb(null, uploadDir);
   },
@@ -26,19 +48,16 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({
-  storage,
+const uploadDisk = multer({
+  storage: diskStorage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
-  fileFilter: (_req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|pdf/;
-    const extName = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimeType = allowedTypes.test(file.mimetype);
-    if (extName && mimeType) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only .jpeg, .jpg, .png, and .pdf files are allowed'));
-    }
-  },
+  fileFilter: filter,
+});
+
+const uploadMemory = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: imageFilter,
 });
 
 // Dependency Injection
@@ -52,11 +71,13 @@ const router = Router();
 
 // All routes are protected
 router.get('/person/:seamanCode', auth, certificateController.getCertificatesBySeamanCode);
-router.get('/view/:seamanCode/:nomorSertifikat', auth, certificateController.viewCertificateFile);
+router.get('/view/:seamanCode/:nomorSertifikat', certificateController.viewCertificateFile);
 router.get('/download/:seamanCode/:nomorSertifikat', auth, certificateController.downloadCertificateFile);
 router.get('/:id', auth, certificateController.getCertificateById);
-router.post('/', auth, upload.single('file'), certificateController.createCertificate);
-router.put('/:id', auth, validateRequest(updateCertificateSchema), certificateController.updateCertificate);
+router.post('/', auth, uploadDisk.single('file'), certificateController.createCertificate);
+router.post('/scan', auth, uploadMemory.array('files', 20), certificateController.scanCertificates);
+router.post('/bulk', auth, certificateController.bulkCreateCertificates);
+router.put('/:id', auth, uploadDisk.single('file'), certificateController.updateCertificate);
 router.delete('/:id', auth, certificateController.deleteCertificate);
 
 export default router;

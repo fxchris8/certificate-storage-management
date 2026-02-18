@@ -1,6 +1,21 @@
 import { useState } from "react"
+import { z } from "zod"
 import {
   Table,
+// ... imports ...
+
+// Zod Schemas
+const createUserSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+})
+
+const updateUserSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  password: z.string().optional().refine(val => !val || val.length >= 6, "Password must be at least 6 characters if provided"),
+})
+
+export function UserDashboardPage() {
   TableBody,
   TableCell,
   TableHead,
@@ -76,7 +91,18 @@ export function UserDashboardPage() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault()
+
     if (selectedUser) {
+        // Edit mode validation
+        const validation = updateUserSchema.safeParse({
+            username: formData.username,
+            password: formData.password || undefined 
+        })
+        if (!validation.success) {
+            alert(`Error: ${validation.error.issues[0].message}`)
+            return
+        }
+
       updateUser({ 
         id: selectedUser.id, 
         data: { 
@@ -87,6 +113,16 @@ export function UserDashboardPage() {
         onSuccess: () => setIsEditOpen(false)
       })
     } else {
+       // Create mode validation
+       const validation = createUserSchema.safeParse({
+            username: formData.username,
+            password: formData.password
+       })
+       if (!validation.success) {
+           alert(`Error: ${validation.error.issues[0].message}`)
+           return
+       }
+
       createUser({ 
         username: formData.username, 
         password: formData.password! 

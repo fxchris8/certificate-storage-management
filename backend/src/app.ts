@@ -23,7 +23,7 @@ app.use(helmet());
 app.use(express.json());
 
 const allowedURLs = env.WHITE_LIST_URLS || [];
-app.use(cors({ origin: allowedURLs, credentials: true })); // Enables CORS with whitelist
+app.use(cors({ origin: allowedURLs, credentials: true, exposedHeaders: ['Content-Disposition'] })); // Enables CORS with whitelist
 
 
 app.get('/', hostWhitelist(allowedURLs), (req: Request, res: Response): void => {

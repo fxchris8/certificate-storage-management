@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import path from 'path';
 
 import { CertificateService } from '../services/certificate.service';
-import { CreateCertificateInput, UpdateCertificateInput } from '../types/certificate.types';
+import { CreateCertificateInput, UpdateCertificateInput, BulkCreateItem } from '../types/certificate.types';
 
 export class CertificateController {
   private certificateService: CertificateService;
@@ -61,13 +61,19 @@ export class CertificateController {
   };
 
   updateCertificate = async (
-    req: Request<{ id: string }, {}, UpdateCertificateInput>,
+    req: Request<{ id: string }>,
     res: Response,
     next: NextFunction,
   ): Promise<void> => {
     try {
       const { id } = req.params;
-      const result = await this.certificateService.updateCertificate(id, req.body);
+      const { certificateName, nomorSertifikat } = req.body;
+      const updateData: UpdateCertificateInput = {};
+      if (certificateName) updateData.certificateName = certificateName;
+      if (nomorSertifikat) updateData.nomorSertifikat = nomorSertifikat;
+      if (req.file) updateData.fileUrl = req.file.path;
+
+      const result = await this.certificateService.updateCertificate(id, updateData);
       res.status(result.success ? 200 : 400).json(result);
     } catch (error) {
       next(error);
@@ -112,6 +118,36 @@ export class CertificateController {
 
       const fileName = path.basename(result.filePath!);
       res.download(result.filePath!, fileName);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  scanCertificates = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const files = req.files as Express.Multer.File[];
+      if (!files || files.length === 0) {
+        res.status(400).json({ success: false, message: 'At least one file is required' });
+        return;
+      }
+
+      const results = await this.certificateService.scanCertificates(files);
+      res.status(200).json({ success: true, message: 'Scan completed', data: results });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  bulkCreateCertificates = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { items } = req.body as { items: BulkCreateItem[] };
+      if (!items || items.length === 0) {
+        res.status(400).json({ success: false, message: 'At least one certificate is required' });
+        return;
+      }
+
+      const result = await this.certificateService.bulkCreateCertificates(items);
+      res.status(201).json(result);
     } catch (error) {
       next(error);
     }
