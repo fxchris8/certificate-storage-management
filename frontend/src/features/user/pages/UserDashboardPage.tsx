@@ -2,20 +2,6 @@ import { useState } from "react"
 import { z } from "zod"
 import {
   Table,
-// ... imports ...
-
-// Zod Schemas
-const createUserSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-})
-
-const updateUserSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
-  password: z.string().optional().refine(val => !val || val.length >= 6, "Password must be at least 6 characters if provided"),
-})
-
-export function UserDashboardPage() {
   TableBody,
   TableCell,
   TableHead,
@@ -45,6 +31,17 @@ import { usePostUser } from "../_hooks/usePostUser"
 import { usePutUser } from "../_hooks/usePutUser"
 import { useDeleteUser } from "../_hooks/useDeleteUser"
 import { User } from "../types/user.types"
+
+// Zod Schemas
+const createUserSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+})
+
+const updateUserSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  password: z.string().optional().refine(val => !val || val.length >= 6, "Password must be at least 6 characters if provided"),
+})
 
 // Simple form state interface
 interface UserFormState {

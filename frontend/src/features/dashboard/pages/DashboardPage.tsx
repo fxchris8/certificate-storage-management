@@ -4,23 +4,6 @@ import { z } from "zod"
 import {
   Table,
   TableBody,
-// ... imports ...
-
-const ITEMS_PER_PAGE = 5
-
-// Zod Schema
-const seafarerSchema = z.object({
-  name: z.string().min(1, "Full Name is required"),
-  seamancode: z.string().min(1, "Seaman Code is required"),
-})
-
-interface PersonFormState {
-  name: string;
-  seamancode: string;
-}
-
-export function DashboardPage() {
-  const { data: persons = [], isLoading, error } = useGetPersons()
   TableCell,
   TableHead,
   TableHeader,
@@ -62,6 +45,12 @@ import { useGetStats } from "@/features/person/_hooks/useGetStats"
 import { Person } from "@/features/person/types/person.types"
 
 const ITEMS_PER_PAGE = 5
+
+// Zod Schema
+const seafarerSchema = z.object({
+  name: z.string().min(1, "Full Name is required"),
+  seamancode: z.string().min(1, "Seaman Code is required"),
+})
 
 interface PersonFormState {
   name: string;
@@ -166,8 +155,6 @@ export function DashboardPage() {
           <p className="mt-1 text-zinc-500 dark:text-zinc-400">Manage crew members.</p>
         </div>
         <div className="flex gap-3">
-           
-            
             <Button 
               onClick={handleOpenCreate}
               className="h-10 bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/20 text-white border-0 transition-all hover:scale-105 active:scale-95"
