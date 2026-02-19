@@ -29,19 +29,31 @@ async def extract_training_name(
     try:
         image_bytes = await image.read()
 
+        # --- Extract training name (area tengah) ---
         processed = preprocessing_service.preprocess(image_bytes)
         ocr_result = ocr_service.extract_text(processed)
 
         normalized = postprocess_service.normalize_text(ocr_result.raw_text)
         status = postprocess_service.determine_status(ocr_result.confidence)
 
-        logger.info(f"OCR result: {normalized} (conf: {ocr_result.confidence:.2f})")
+        # --- Extract certificate ID (area kanan atas) ---
+        processed_cert = preprocessing_service.preprocess_cert_id(image_bytes)
+        cert_id_result = ocr_service.extract_cert_id(processed_cert)
+
+        certificate_id = postprocess_service.normalize_cert_id(cert_id_result.raw_text)
+
+        logger.info(
+            f"Training name: '{normalized}' (conf: {ocr_result.confidence:.2f}) | "
+            f"Cert ID: '{certificate_id}' (conf: {cert_id_result.confidence:.2f})"
+        )
 
         return ExtractResponse(
             success=True,
             data=ExtractResult(
                 training_name=normalized,
                 confidence=ocr_result.confidence,
+                certificate_id=certificate_id,
+                confidence_id=cert_id_result.confidence,
                 status=status,
                 raw_text=ocr_result.raw_text
             )

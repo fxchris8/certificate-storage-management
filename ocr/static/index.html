@@ -89,8 +89,16 @@
             <span id="trainingName"></span>
         </div>
         <div class="result-item">
-            <label>Confidence:</label>
+            <label>Confidence (Training Name):</label>
             <span id="confidence"></span>
+        </div>
+        <div class="result-item">
+            <label>Certificate No:</label>
+            <span id="certificateId"></span>
+        </div>
+        <div class="result-item">
+            <label>Confidence (Certificate No):</label>
+            <span id="confidenceId"></span>
         </div>
         <div class="result-item">
             <label>Status:</label>
@@ -173,12 +181,20 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    document.getElementById('trainingName').textContent = data.data.training_name;
-                    document.getElementById('confidence').textContent = (data.data.confidence * 100).toFixed(1) + '%';
-                    document.getElementById('rawText').textContent = data.data.raw_text || '-';
+                    const d = data.data;
+
+                    document.getElementById('trainingName').textContent = d.training_name;
+                    document.getElementById('confidence').textContent = (d.confidence * 100).toFixed(1) + '%';
+
+                    document.getElementById('certificateId').textContent = d.certificate_id || '-';
+                    document.getElementById('confidenceId').textContent = d.certificate_id
+                        ? (d.confidence_id * 100).toFixed(1) + '%'
+                        : '-';
+
+                    document.getElementById('rawText').textContent = d.raw_text || '-';
 
                     const statusEl = document.getElementById('status');
-                    statusEl.innerHTML = `<span class="status ${data.data.status}">${data.data.status.replace('_', ' ')}</span>`;
+                    statusEl.innerHTML = `<span class="status ${d.status}">${d.status.replace('_', ' ')}</span>`;
 
                     resultDiv.classList.add('show');
                 } else {

@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import logging
 
-from app.config import crop_config
+from app.config import crop_config, cert_id_crop_config
 
 logger = logging.getLogger(__name__)
 
@@ -23,21 +23,19 @@ class PreprocessingService:
         self.target_height = 800  # Resize to this height for consistency
     
     def preprocess(self, image_bytes: bytes) -> np.ndarray:
-        # Decode
         image = self._decode_image(image_bytes)
-        
-        # Crop to region of interest
         cropped = self._crop_roi(image)
-        
-        # Grayscale
         gray = self._to_grayscale(cropped)
-        
-        # Resize
         resized = self._resize(gray)
-        
-        # Threshold
         thresholded = self._apply_threshold(resized)
-        
+        return thresholded
+
+    def preprocess_cert_id(self, image_bytes: bytes) -> np.ndarray:
+        image = self._decode_image(image_bytes)
+        cropped = self._crop_cert_id_roi(image)
+        gray = self._to_grayscale(cropped)
+        resized = self._resize(gray)
+        thresholded = self._apply_threshold(resized)
         return thresholded
     
     def _decode_image(self, image_bytes: bytes) -> np.ndarray:
@@ -51,17 +49,27 @@ class PreprocessingService:
         return image
     
     def _crop_roi(self, image: np.ndarray) -> np.ndarray:
-        """Crop to region of interest where training name appears."""
         height, width = image.shape[:2]
-        
+
         x_start = int(width * crop_config.X_START)
         x_end = int(width * crop_config.X_END)
         y_start = int(height * crop_config.Y_START)
         y_end = int(height * crop_config.Y_END)
-        
+
         cropped = image[y_start:y_end, x_start:x_end]
-        
-        logger.debug(f"Cropped image: {cropped.shape}")
+        logger.debug(f"Cropped training name ROI: {cropped.shape}")
+        return cropped
+
+    def _crop_cert_id_roi(self, image: np.ndarray) -> np.ndarray:
+        height, width = image.shape[:2]
+
+        x_start = int(width * cert_id_crop_config.X_START)
+        x_end = int(width * cert_id_crop_config.X_END)
+        y_start = int(height * cert_id_crop_config.Y_START)
+        y_end = int(height * cert_id_crop_config.Y_END)
+
+        cropped = image[y_start:y_end, x_start:x_end]
+        logger.debug(f"Cropped cert ID ROI: {cropped.shape}")
         return cropped
     
     def _to_grayscale(self, image: np.ndarray) -> np.ndarray:

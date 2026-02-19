@@ -60,8 +60,20 @@ class PostprocessService:
 
         return result
     
+    def normalize_cert_id(self, raw_text: Optional[str]) -> Optional[str]:
+        if not raw_text:
+            return None
+
+        cleaned = re.sub(r'\s+', '', raw_text)
+
+        match = re.search(r'62\d{13,14}', cleaned)
+        if match:
+            return match.group(0)
+
+        return None
+
     def determine_status(
-        self, 
+        self,
         confidence: float
     ) -> Literal["auto_approved", "needs_review", "failed"]:
         """

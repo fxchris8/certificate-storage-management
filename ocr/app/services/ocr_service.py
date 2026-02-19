@@ -1,5 +1,6 @@
 from paddleocr import PaddleOCR
 import numpy as np
+import re
 from typing import List
 import logging
 
@@ -149,5 +150,45 @@ class OCRService:
             upper_ratio * 0.2 +
             keyword_score * 0.2
         )
-        
+
         return score
+
+    def extract_cert_id(self, image: np.ndarray) -> RawOCRResult:
+        cert_pattern = re.compile(r'62\d{13,14}')
+
+        try:
+            results = self.ocr.ocr(image, cls=True)
+
+            if not results or not results[0]:
+                logger.warning("No text detected in cert ID region")
+                return RawOCRResult(raw_text=None, confidence=0.0, all_blocks=[])
+
+            text_blocks = self._parse_results(results[0])
+
+            if not text_blocks:
+                return RawOCRResult(raw_text=None, confidence=0.0, all_blocks=[])
+
+            best_block = None
+            best_confidence = 0.0
+
+            for block in text_blocks:
+                cleaned = re.sub(r'\s+', '', block["text"])
+                if cert_pattern.search(cleaned):
+                    if block["confidence"] > best_confidence:
+                        best_block = block
+                        best_confidence = block["confidence"]
+
+            if best_block:
+                logger.info(f"Cert ID found: '{best_block['text']}' (conf: {best_block['confidence']:.2f})")
+                return RawOCRResult(
+                    raw_text=best_block["text"],
+                    confidence=best_block["confidence"],
+                    all_blocks=text_blocks
+                )
+
+            logger.warning("No cert ID pattern matched in region")
+            return RawOCRResult(raw_text=None, confidence=0.0, all_blocks=text_blocks)
+
+        except Exception as e:
+            logger.error(f"Cert ID extraction failed: {str(e)}")
+            raise
