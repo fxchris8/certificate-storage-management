@@ -11,14 +11,30 @@ import { CreateCertificateInput, UpdateCertificateInput, OcrScanResult, BulkCrea
 export class CertificateService {
   constructor(private readonly certificateRepository: CertificateRepository) {}
 
-  async getCertificatesBySeamanCode(seamanCode: string) {
+  async getCertificatesBySeamanCode(seamanCode: string, params?: { page?: number; limit?: number; search?: string }) {
     const person = await this.certificateRepository.findPersonBySeamanCode(seamanCode);
     if (!person) {
       return unifiedResponse(false, ERROR.PERSON_NOT_FOUND);
     }
 
-    const certificates = await this.certificateRepository.findBySeamanCode(seamanCode);
-    return unifiedResponse(true, SUCCESS.CERTIFICATE_FOUND, certificates);
+    const { page = 1, limit = 10, search } = params || {};
+    const skip = (page - 1) * limit;
+
+    const [{ data, total }, mandatoryFlags] = await Promise.all([
+      this.certificateRepository.findBySeamanCode(seamanCode, { skip, take: limit, search }),
+      this.certificateRepository.checkMandatoryDocs(seamanCode),
+    ]);
+
+    return unifiedResponse(true, SUCCESS.CERTIFICATE_FOUND, {
+      data,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        ...mandatoryFlags,
+      }
+    });
   }
 
   async getCertificateById(id: string) {
@@ -120,7 +136,14 @@ export class CertificateService {
 
         const data = await response.json() as {
           success: boolean;
-          data?: { training_name: string; confidence: number; status: string };
+          data?: { 
+            training_name: string; 
+            confidence: number; 
+            status: string;
+            certificate_id: string;
+            confidence_id: number;
+            raw_text: string;
+          };
           error?: string;
         };
 
@@ -131,6 +154,9 @@ export class CertificateService {
             trainingName: data.data.training_name,
             confidence: data.data.confidence,
             status: data.data.status,
+            certificate_id: data.data.certificate_id,
+            confidence_id: data.data.confidence_id,
+            raw_text: data.data.raw_text,
           });
         } else {
           results.push({

@@ -7,21 +7,56 @@ export class CertificateRepository {
     this.prisma = prismaClient;
   }
 
-  async findBySeamanCode(seamanCode: string) {
-    return this.prisma.certificate.findMany({
-      where: {
-        person: { seamancode: seamanCode },
-      },
-      select: {
-        id: true,
-        personId: true,
-        certificateName: true,
-        nomorSertifikat: true,
-        fileUrl: true,
-        uploadedAt: true,
-      },
-      orderBy: { uploadedAt: 'desc' },
-    });
+  async findBySeamanCode(seamanCode: string, params?: { skip?: number; take?: number; search?: string }) {
+    const { skip, take, search } = params || {};
+    const where: any = {
+      person: { seamancode: seamanCode },
+    };
+
+    if (search) {
+      where.AND = {
+         OR: [
+          { certificateName: { contains: search, mode: 'insensitive' } },
+          { nomorSertifikat: { contains: search, mode: 'insensitive' } },
+        ]
+      }
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.certificate.findMany({
+        skip,
+        take,
+        where,
+        select: {
+          id: true,
+          personId: true,
+          certificateName: true,
+          nomorSertifikat: true,
+          fileUrl: true,
+          uploadedAt: true,
+        },
+        orderBy: { uploadedAt: 'desc' },
+      }),
+      this.prisma.certificate.count({ where }),
+    ]);
+
+    return { data, total };
+  }
+
+  async checkMandatoryDocs(seamanCode: string): Promise<{ hasIjazah: boolean; hasEndorse: boolean; hasMedicalCheckup: boolean }> {
+    const baseWhere = { person: { seamancode: seamanCode } };
+
+    const [ijazah, endorse, medical] = await Promise.all([
+      this.prisma.certificate.findFirst({ where: { ...baseWhere, certificateName: 'Ijazah' }, select: { id: true } }),
+      this.prisma.certificate.findFirst({ where: { ...baseWhere, certificateName: 'Endorse' }, select: { id: true } }),
+      this.prisma.certificate.findFirst({ where: { ...baseWhere, certificateName: 'Medical Checkup' }, select: { id: true } }),
+    ]);
+
+    return {
+      hasIjazah: !!ijazah,
+      hasEndorse: !!endorse,
+      hasMedicalCheckup: !!medical,
+    };
   }
 
   async findById(id: string) {

@@ -8,7 +8,14 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
 import { usePostLogin } from "@/features/auth/_hooks/@post/usePostLogin"
 import { LoginFormData, loginSchema } from "@/types/loginSchema"
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,11 +24,7 @@ import { useForm } from "react-hook-form"
 export function LoginPage() {
   const { mutate: login, isPending: isLoading, error } = usePostLogin();
   
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginFormData>({
+  const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
 
@@ -41,43 +44,46 @@ export function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                placeholder="Enter your username"
-                {...register("username")}
-                disabled={isLoading}
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Username</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter your username" disabled={isLoading} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-               {errors.username && (
-                <p className="text-sm text-red-500">{errors.username.message}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                {...register("password")}
-                disabled={isLoading}
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="••••••••" disabled={isLoading} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-              {errors.password && (
-                <p className="text-sm text-red-500">{errors.password.message}</p>
+              
+              {error && (
+                  <p className="text-sm text-red-500 text-center">
+                      Login failed. Please check your credentials.
+                  </p>
               )}
-            </div>
-            
-            {error && (
-                <p className="text-sm text-red-500 text-center">
-                    Login failed. Please check your credentials.
-                </p>
-            )}
 
-            <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700" disabled={isLoading}>
-              {isLoading ? "Signing In..." : "Sign In"}
-            </Button>
-          </form>
+              <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700" disabled={isLoading}>
+                {isLoading ? "Signing In..." : "Sign In"}
+              </Button>
+            </form>
+          </Form>
         </CardContent>
         <CardFooter className="text-center text-sm text-muted-foreground">
           &copy; 2024 Certificate Storage Management

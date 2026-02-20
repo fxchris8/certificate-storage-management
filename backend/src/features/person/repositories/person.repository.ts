@@ -7,17 +7,35 @@ export class PersonRepository {
     this.prisma = prismaClient;
   }
 
-  async findAll() {
-    return this.prisma.person.findMany({
-      select: {
-        id: true,
-        name: true,
-        seamancode: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+  async findAll(params?: { skip?: number; take?: number; search?: string }) {
+    const { skip, take, search } = params || {};
+    const where: any = {};
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { seamancode: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.person.findMany({
+        skip,
+        take,
+        where,
+        select: {
+          id: true,
+          name: true,
+          seamancode: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.person.count({ where }),
+    ]);
+
+    return { data, total };
   }
 
   async findById(id: string) {

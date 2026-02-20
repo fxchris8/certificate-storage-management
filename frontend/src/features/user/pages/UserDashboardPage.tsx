@@ -1,5 +1,7 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { z } from "zod"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import {
   Table,
   TableBody,
@@ -8,10 +10,22 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import {
+  Pagination, PaginationContent, PaginationItem, PaginationLink,
+  PaginationNext, PaginationPrevious, PaginationEllipsis
+} from "@/components/ui/pagination"
+
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
 import { Plus, MoreHorizontal, Edit, Trash2, Search, Loader2 } from "lucide-react"
 import {
   Dialog,
@@ -43,41 +57,65 @@ const updateUserSchema = z.object({
   password: z.string().optional().refine(val => !val || val.length >= 6, "Password must be at least 6 characters if provided"),
 })
 
-// Simple form state interface
-interface UserFormState {
-  username: string;
-  password?: string;
-}
+// Combined type for the form
+type UserFormValues = z.infer<typeof createUserSchema> | z.infer<typeof updateUserSchema>
 
 export function UserDashboardPage() {
-  const { data: usersResponse, isLoading, error } = useGetUsers();
   const { mutate: createUser, isPending: isCreating } = usePostUser();
   const { mutate: updateUser, isPending: isUpdating } = usePutUser();
   const { mutate: deleteUser, isPending: isDeleting } = useDeleteUser();
 
+  const [currentPage, setCurrentPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
-  
-  // Form state
-  const [formData, setFormData] = useState<UserFormState>({ username: "", password: "" })
 
-  const users = usersResponse || [];
+  // Debounce search
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+      setCurrentPage(1)
+    }, 400)
+    return () => clearTimeout(timeout)
+  }, [searchQuery])
 
-  const filteredUsers = users.filter((user: User) => 
-    user.username.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const { data: usersData, isLoading, error } = useGetUsers({
+    page: currentPage,
+    limit: 10,
+    search: debouncedSearch,
+  });
+
+  const users = usersData?.data ?? [];
+  const totalPages = usersData?.meta?.totalPages ?? 1;
+
+  const form = useForm<UserFormValues>({
+    resolver: zodResolver(selectedUser ? updateUserSchema : createUserSchema),
+    mode: "onChange",
+    defaultValues: {
+      username: "",
+      password: "",
+    },
+  })
+
+  // Reset form validation when selectedUser changes (Create vs Edit mode)
+  useEffect(() => {
+    form.reset(
+        selectedUser 
+        ? { username: selectedUser.username, password: "" }
+        : { username: "", password: "" }
+    )
+  }, [selectedUser, form])
+
 
   const handleOpenCreate = () => {
     setSelectedUser(null)
-    setFormData({ username: "", password: "" })
     setIsEditOpen(true)
   }
 
   const handleOpenEdit = (user: User) => {
     setSelectedUser(user)
-    setFormData({ username: user.username, password: "" }) // Don't fill password
     setIsEditOpen(true)
   }
 
@@ -86,43 +124,24 @@ export function UserDashboardPage() {
     setIsDeleteOpen(true)
   }
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault()
-
+  const onSubmit = (data: z.infer<typeof updateUserSchema>) => {
     if (selectedUser) {
-        // Edit mode validation
-        const validation = updateUserSchema.safeParse({
-            username: formData.username,
-            password: formData.password || undefined 
-        })
-        if (!validation.success) {
-            alert(`Error: ${validation.error.issues[0].message}`)
-            return
-        }
-
       updateUser({ 
         id: selectedUser.id, 
         data: { 
-            username: formData.username, 
-            password: formData.password || undefined 
+            username: data.username, 
+            password: data.password || undefined 
         } 
       }, {
         onSuccess: () => setIsEditOpen(false)
       })
     } else {
-       // Create mode validation
-       const validation = createUserSchema.safeParse({
-            username: formData.username,
-            password: formData.password
-       })
-       if (!validation.success) {
-           alert(`Error: ${validation.error.issues[0].message}`)
-           return
-       }
+      // For create, password is required by schema, so it should be present
+      if (!data.password) return
 
       createUser({ 
-        username: formData.username, 
-        password: formData.password! 
+        username: data.username, 
+        password: data.password 
       }, {
         onSuccess: () => setIsEditOpen(false)
       })
@@ -188,14 +207,14 @@ export function UserDashboardPage() {
                 </TableRow>
                 </TableHeader>
                 <TableBody>
-                {filteredUsers.length === 0 ? (
+                {users.length === 0 ? (
                     <TableRow>
                         <TableCell colSpan={5} className="text-center h-24 text-zinc-500">
                             No users found.
                         </TableCell>
                     </TableRow>
                 ) : (
-                filteredUsers.map((user: User, index: number) => (
+                users.map((user: User, index: number) => (
                     <TableRow 
                       key={user.id} 
                       className="border-b-zinc-50 dark:border-b-zinc-900 hover:bg-zinc-50/50"
@@ -238,6 +257,52 @@ export function UserDashboardPage() {
         </CardContent>
       </Card>
 
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                aria-disabled={currentPage === 1}
+                className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+              />
+            </PaginationItem>
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+              .reduce<(number | 'ellipsis')[]>((acc, p, idx, arr) => {
+                if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push('ellipsis')
+                acc.push(p)
+                return acc
+              }, [])
+              .map((p, idx) =>
+                p === 'ellipsis' ? (
+                  <PaginationItem key={`ellipsis-${idx}`}>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                ) : (
+                  <PaginationItem key={p}>
+                    <PaginationLink
+                      isActive={currentPage === p}
+                      onClick={() => setCurrentPage(p as number)}
+                      className="cursor-pointer"
+                    >
+                      {p}
+                    </PaginationLink>
+                  </PaginationItem>
+                )
+              )}
+            <PaginationItem>
+              <PaginationNext
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                aria-disabled={currentPage === totalPages}
+                className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
+
             {/* Edit/Create Dialog */}
             <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
               <DialogContent className="w-[calc(100%-2rem)] sm:max-w-[500px] p-6 overflow-hidden border-0 shadow-2xl rounded-xl">
@@ -247,56 +312,65 @@ export function UserDashboardPage() {
                   </DialogTitle>
                 </DialogHeader>
                 
-                <form onSubmit={handleSave} className="space-y-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="username" className="text-sm font-semibold text-zinc-900">
-                        Username
-                      </Label>
-                      <Input
-                        id="username"
-                        value={formData.username}
-                        onChange={(e) => setFormData({...formData, username: e.target.value})}
-                        className="h-11 bg-white border-zinc-200 transition-all"
-                        placeholder="Enter username"
-                        required
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                      <FormField
+                        control={form.control}
+                        name="username"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Username</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter username" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </div>
-                    <div className="space-y-2">
-                       <Label htmlFor="password" className="text-sm font-semibold text-zinc-900">
-                        Password {selectedUser && "(Leave blank to keep current)"}
-                      </Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        value={formData.password}
-                        onChange={(e) => setFormData({...formData, password: e.target.value})}
-                        className="h-11 bg-white border-zinc-200 transition-all"
-                        placeholder="Enter password"
-                        required={!selectedUser}
+                      
+                      <FormField
+                        control={form.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              Password {selectedUser && "(Leave blank to keep current)"}
+                            </FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="password" 
+                                placeholder="Enter password" 
+                                {...field} 
+                                value={field.value || ""} // Handle potentially undefined value
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                  </div>
 
-                  <DialogFooter className="flex flex-row justify-end gap-3 pt-2">
-                     <Button 
-                       type="button" 
-                       variant="outline" 
-                       onClick={() => setIsEditOpen(false)}
-                       className="h-11 px-6 border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900"
-                     >
-                        Cancel
-                     </Button>
-                    <Button 
-                        type="submit" 
-                        disabled={isCreating || isUpdating}
-                        className="h-11 px-6 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20"
-                    >
-                        {isCreating || isUpdating ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : null}
-                        {selectedUser ? "Save Changes" : "Create User"}
-                    </Button>
-                  </DialogFooter>
-                </form>
+                    <DialogFooter className="flex flex-row justify-end gap-3 pt-2">
+                       <Button 
+                         type="button" 
+                         variant="outline" 
+                         onClick={() => setIsEditOpen(false)}
+                         className="h-11 px-6 border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900"
+                       >
+                          Cancel
+                       </Button>
+                      <Button 
+                          type="submit" 
+                          disabled={isCreating || isUpdating || !form.formState.isValid}
+                          className="h-11 px-6 text-white shadow-md shadow-indigo-600/20"
+                      >
+                          {isCreating || isUpdating ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : null}
+                          {selectedUser ? "Save Changes" : "Create User"}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </Form>
               </DialogContent>
             </Dialog>
             

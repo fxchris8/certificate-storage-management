@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react"
+import { useState, useRef, useCallback, useEffect } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog"
 import {
   ArrowLeft, MoreHorizontal, Eye, Download, Trash2,
-  Upload, Loader2, ScanLine, Check, Pencil, FileUp, ZoomIn, RotateCcw, Maximize2
+  Upload, Loader2, ScanLine, Check, Pencil, FileUp, ZoomIn, RotateCcw, Maximize2, Search
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
@@ -32,15 +32,23 @@ import { usePostCertificate } from "../_hooks/usePostCertificate"
 import { usePutCertificate } from "../_hooks/usePutCertificate"
 import { useDeleteCertificate } from "../_hooks/useDeleteCertificate"
 import { useScanCertificates } from "../_hooks/useScanCertificates"
-import { useBulkCreateCertificates } from "../_hooks/useBulkCreateCertificates"
 import { useGetPersons } from "@/features/person/_hooks/useGetPersons"
 import api from "@/lib/api"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { FilePreviewDialog } from "@/components/ui/file-preview-dialog"
 
 import { z } from "zod"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
 
-const ITEMS_PER_PAGE = 5
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png"]
 const ACCEPTED_DOC_TYPES = [...ACCEPTED_IMAGE_TYPES, "application/pdf"]
@@ -67,11 +75,25 @@ const editCertificateSchema = z.object({
     .refine((file) => !file || ACCEPTED_DOC_TYPES.includes(file.type), "Only .jpg, .jpeg, .png and .pdf formats are supported."),
 })
 
-// Types for upload flows
-interface DocField {
-  file: File | null
-  nomorSertifikat: string
-}
+
+
+// Upload Form Schema
+// We'll use a dynamic schema or a fixed shape where keys are optional
+const uploadFormSchema = z.object({
+  Ijazah: docUploadSchema.optional(),
+  Endorse: docUploadSchema.optional(),
+  "Medical Checkup": docUploadSchema.optional(),
+}).refine((data) => {
+  // At least one file must be present and valid
+  const hasFile = Object.values(data).some(val => val && val.file);
+  return hasFile;
+}, {
+  message: "Minimal satu dokumen harus diupload",
+  path: ["root"] // Error will be on root
+});
+
+type UploadFormValues = z.infer<typeof uploadFormSchema>
+type EditCertificateFormValues = z.infer<typeof editCertificateSchema>
 
 interface ScanPreviewItem {
   originalName: string
@@ -82,12 +104,27 @@ interface ScanPreviewItem {
   nomorSertifikat: string
   isEditing: boolean
   editedName: string
+  certificate_id?: string
+  confidence_id?: number
+  raw_text?: string
+  isEditingNomor?: boolean
 }
 
 export function CertificatesPage() {
   const { seamancode } = useParams()
   const navigate = useNavigate()
   const [currentPage, setCurrentPage] = useState(1)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
+
+  // Debounce search
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+      setCurrentPage(1)
+    }, 400)
+    return () => clearTimeout(timeout)
+  }, [searchQuery])
 
   // Dialog states
   const [isDocUploadOpen, setIsDocUploadOpen] = useState(false)
@@ -97,11 +134,31 @@ export function CertificatesPage() {
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [editingCert, setEditingCert] = useState<{ id: string; certificateName: string; nomorSertifikat: string; file: File | null } | null>(null)
 
+  // Delete state
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+
   // Button 1: Ijazah/Endorse/Medical fields
-  const [docFields, setDocFields] = useState<Record<string, DocField>>({
-    Ijazah: { file: null, nomorSertifikat: "" },
-    Endorse: { file: null, nomorSertifikat: "" },
-    "Medical Checkup": { file: null, nomorSertifikat: "" },
+  // Button 1: Ijazah/Endorse/Medical fields
+  // Replaced by React Hook Form
+  const uploadForm = useForm<UploadFormValues>({
+    resolver: zodResolver(uploadFormSchema),
+    defaultValues: {
+      Ijazah: { file: undefined, nomorSertifikat: "" },
+      Endorse: { file: undefined, nomorSertifikat: "" },
+      "Medical Checkup": { file: undefined, nomorSertifikat: "" },
+    },
+    mode: "onChange"
+  })
+
+  // Edit Form
+  const editForm = useForm<EditCertificateFormValues>({
+    resolver: zodResolver(editCertificateSchema),
+    defaultValues: {
+      certificateName: "",
+      nomorSertifikat: "",
+      file: undefined, // Optional
+    }
   })
 
   // Button 2: Sertifikat bulk upload + scan
@@ -111,60 +168,54 @@ export function CertificatesPage() {
   const sertifikatFileRef = useRef<HTMLInputElement>(null)
 
   // Data fetching
-  const { data: persons } = useGetPersons()
-  const seafarer = persons?.find(p => p.seamancode === seamancode)
-  const { data: certificates, isLoading, isError } = useGetCertificates(seamancode)
+  const { data: personsData } = useGetPersons()
+  const seafarer = personsData?.data?.find((p: {seamancode: string}) => p.seamancode === seamancode)
+  const { data: certificatesData, isLoading, isError } = useGetCertificates(seamancode, {
+    page: currentPage,
+    limit: 10,
+    search: debouncedSearch,
+  })
 
   // Mutations
   const createMutation = usePostCertificate()
   const updateMutation = usePutCertificate()
   const deleteMutation = useDeleteCertificate()
   const scanMutation = useScanCertificates()
-  const bulkCreateMutation = useBulkCreateCertificates()
 
-  const allDocuments = certificates ?? []
-  const totalPages = Math.ceil(allDocuments.length / ITEMS_PER_PAGE)
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
-  const currentDocuments = allDocuments.slice(startIndex, startIndex + ITEMS_PER_PAGE)
+  const currentDocuments = certificatesData?.data ?? []
+  const totalPages = certificatesData?.meta?.totalPages ?? 1
 
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) setCurrentPage(page)
   }
 
   // === Button 1: Upload Ijazah/Endorse/Medical ===
-  const handleDocFieldChange = (name: string, field: Partial<DocField>) => {
-    setDocFields(prev => ({ ...prev, [name]: { ...prev[name], ...field } }))
-  }
+  // Handled by RHF setValue now, no custom handler needed for field change logic 
+  // except for file dropzone binding
 
-  const handleDocUploadSubmit = async () => {
+
+  const onUploadSubmit = async (data: UploadFormValues) => {
     if (!seafarer) return
 
-    const entries = Object.entries(docFields).filter(([, v]) => v.file && v.nomorSertifikat)
+    // Filter out empty entries
+    const entries = Object.entries(data).filter(([, v]) => v && v.file && v.nomorSertifikat) as [string, { file: File, nomorSertifikat: string }][]
+    
     if (entries.length === 0) return
 
     for (const [certificateName, { file, nomorSertifikat }] of entries) {
-      if (!file) continue
-
-      // Validation
-      const validation = docUploadSchema.safeParse({ file, nomorSertifikat })
-      if (!validation.success) {
-        alert(`Error pada ${certificateName}: ${validation.error.issues[0].message}`)
-        return
-      }
-
-      const formData = new FormData()
-      formData.append("personId", seafarer.id)
-      formData.append("certificateName", certificateName)
-      formData.append("nomorSertifikat", nomorSertifikat)
-      formData.append("file", file)
-      await createMutation.mutateAsync(formData)
+       const formData = new FormData()
+       formData.append("personId", seafarer.id)
+       formData.append("certificateName", certificateName)
+       formData.append("nomorSertifikat", nomorSertifikat)
+       formData.append("file", file)
+       await createMutation.mutateAsync(formData)
     }
 
     setIsDocUploadOpen(false)
-    setDocFields({
-      Ijazah: { file: null, nomorSertifikat: "" },
-      Endorse: { file: null, nomorSertifikat: "" },
-      "Medical Checkup": { file: null, nomorSertifikat: "" },
+    uploadForm.reset({
+      Ijazah: { file: undefined, nomorSertifikat: "" },
+      Endorse: { file: undefined, nomorSertifikat: "" },
+      "Medical Checkup": { file: undefined, nomorSertifikat: "" },
     })
   }
 
@@ -185,8 +236,9 @@ export function CertificatesPage() {
       onSuccess: (results) => {
         setScanResults(results.map(r => ({
           ...r,
-          nomorSertifikat: "",
+          nomorSertifikat: r.certificate_id || "",
           isEditing: false,
+          isEditingNomor: false,
           editedName: r.trainingName,
         })))
         setScanStep("preview")
@@ -271,30 +323,38 @@ export function CertificatesPage() {
 
   // === Common handlers ===
   const handleDelete = (id: string) => {
-    if (window.confirm("Apakah Anda yakin ingin menghapus sertifikat ini?")) {
-      deleteMutation.mutate(id)
+    setDeleteId(id)
+    setIsDeleteOpen(true)
+  }
+
+  const confirmDelete = () => {
+    if (deleteId) {
+      deleteMutation.mutate(deleteId, {
+        onSuccess: () => {
+          setIsDeleteOpen(false)
+          setDeleteId(null)
+        }
+      })
     }
   }
 
   const handleEditOpen = (doc: { id: string; certificateName: string; nomorSertifikat: string }) => {
     setEditingCert({ ...doc, file: null })
+    editForm.reset({
+        certificateName: doc.certificateName,
+        nomorSertifikat: doc.nomorSertifikat,
+        file: undefined, // Reset file input
+    })
     setIsEditOpen(true)
   }
 
-  const handleEditSubmit = async () => {
+  const onEditSubmit = async (data: EditCertificateFormValues) => {
     if (!editingCert) return
 
-    // Validation
-    const validation = editCertificateSchema.safeParse(editingCert)
-    if (!validation.success) {
-      alert(`Error: ${validation.error.issues[0].message}`)
-      return
-    }
-
     const formData = new FormData()
-    formData.append("certificateName", editingCert.certificateName)
-    formData.append("nomorSertifikat", editingCert.nomorSertifikat)
-    if (editingCert.file) formData.append("file", editingCert.file)
+    formData.append("certificateName", data.certificateName)
+    formData.append("nomorSertifikat", data.nomorSertifikat)
+    if (data.file) formData.append("file", data.file)
 
     updateMutation.mutate(
       { id: editingCert.id, data: formData },
@@ -302,6 +362,7 @@ export function CertificatesPage() {
         onSuccess: () => {
           setIsEditOpen(false)
           setEditingCert(null)
+          editForm.reset()
         },
       }
     )
@@ -362,10 +423,11 @@ export function CertificatesPage() {
     )
   }
 
-  // Check if all required docs exist
-  const requiredDocs = ["Ijazah", "Endorse", "Medical Checkup"]
-  const uploadedDocNames = allDocuments.map(d => d.certificateName)
-  const isAllDocsUploaded = requiredDocs.every(d => uploadedDocNames.includes(d))
+  // Mandatory doc flags from server (independent of search/pagination)
+  const hasIjazah = certificatesData?.meta?.hasIjazah ?? false
+  const hasEndorse = certificatesData?.meta?.hasEndorse ?? false
+  const hasMedicalCheckup = certificatesData?.meta?.hasMedicalCheckup ?? false
+  const isAllDocsUploaded = hasIjazah && hasEndorse && hasMedicalCheckup
 
   return (
     <div className="space-y-6">
@@ -421,8 +483,17 @@ export function CertificatesPage() {
 
       {/* Documents Table */}
       <Card className="border border-zinc-200 shadow-sm dark:border-zinc-800 bg-white dark:bg-zinc-950">
-        <CardHeader className="pb-4">
+        <CardHeader className="pb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Documents</h3>
+          <div className="relative w-full sm:max-w-xs">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+            <Input
+              placeholder="Search certificates..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-10 bg-white border-zinc-200"
+            />
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -433,7 +504,7 @@ export function CertificatesPage() {
               </div>
             ) : isError ? (
               <div className="text-center py-12 text-red-500">Failed to load certificates</div>
-            ) : allDocuments.length === 0 ? (
+            ) : currentDocuments.length === 0 ? (
               <div className="text-center py-12 text-zinc-400">No certificates found</div>
             ) : (
               <>
@@ -450,7 +521,7 @@ export function CertificatesPage() {
                     <TableBody>
                       {currentDocuments.map((doc, index) => (
                         <TableRow key={doc.id} className="border-b-zinc-50 dark:border-b-zinc-900 hover:bg-zinc-50/50">
-                          <TableCell className="font-medium text-zinc-500">{startIndex + index + 1}</TableCell>
+                          <TableCell className="font-medium text-zinc-500">{(currentPage - 1) * 10 + index + 1}</TableCell>
                           <TableCell>
                             <span className="font-semibold text-zinc-900 dark:text-zinc-100">{doc.certificateName}</span>
                           </TableCell>
@@ -542,65 +613,106 @@ export function CertificatesPage() {
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold">Upload Ijazah, Endorse & Medical Checkup</DialogTitle>
           </DialogHeader>
-          <div className="space-y-6 py-4">
-            {Object.entries(docFields).map(([name, field]) => (
-              <div key={name} className="space-y-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-                <h4 className="font-semibold text-zinc-900 dark:text-zinc-100">{name}</h4>
-                <div className="space-y-2">
-                  <Label>File</Label>
-                  {field.file ? (
-                    <div className="group relative flex items-center gap-3 rounded-lg border border-zinc-200 bg-white p-3 shadow-sm transition-all hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-zinc-700">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
-                        <ScanLine className="h-5 w-5 text-zinc-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{field.file.name}</p>
-                        <p className="text-xs text-zinc-500">{(field.file.size / 1024).toFixed(1)} KB</p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-zinc-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                        onClick={() => handleDocFieldChange(name, { file: null })}
-                        title="Remove"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <FileDropzone
-                      accept=".jpeg,.jpg,.png,.pdf"
-                      maxFiles={1}
-                      onFilesAdded={(files) => handleDocFieldChange(name, { file: files[0] ?? null })}
-                      className="h-32" 
+          <Form {...uploadForm}>
+            <form onSubmit={uploadForm.handleSubmit(onUploadSubmit)} className="space-y-6 py-4">
+              {[
+                { name: "Ijazah", uploaded: hasIjazah },
+                { name: "Endorse", uploaded: hasEndorse },
+                { name: "Medical Checkup", uploaded: hasMedicalCheckup },
+              ]
+                .filter(({ uploaded }) => !uploaded)
+                .map(({ name }) => (
+                  <div key={name} className="space-y-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+                    <h4 className="font-semibold text-zinc-900 dark:text-zinc-100">{name}</h4>
+                    
+                    {/* File Dropzone Field */}
+                    <FormField
+                      control={uploadForm.control}
+                      // @ts-ignore - Dynamic string key
+                      name={`${name}.file`}
+                      render={({ field: { value, onChange } }) => {
+                        const fileValue = value as File | null | undefined;
+                        return (
+                         <FormItem>
+                          <FormLabel>File</FormLabel>
+                          <FormControl>
+                            {fileValue ? (
+                              <div className="group relative flex items-center gap-3 rounded-lg border border-zinc-200 bg-white p-3 shadow-sm transition-all hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-zinc-700">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                                  <ScanLine className="h-5 w-5 text-zinc-500" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{fileValue.name}</p>
+                                  <p className="text-xs text-zinc-500">{(fileValue.size / 1024).toFixed(1)} KB</p>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-zinc-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                  onClick={() => {
+                                      onChange(null);
+                                  }}
+                                  title="Remove"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <FileDropzone
+                                accept=".jpeg,.jpg,.png,.pdf"
+                                maxFiles={1}
+                                onFilesAdded={(files) => onChange(files[0] ?? null)}
+                                className="h-32" 
+                              />
+                            )}
+                          </FormControl>
+                          <FormMessage />
+                         </FormItem>
+                      )}}
                     />
+
+                    {/* Nomor Sertifikat Field */}
+                    <FormField
+                      control={uploadForm.control}
+                      // @ts-ignore
+                      name={`${name}.nomorSertifikat`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            Nomor Sertifikat
+                            {/* Show asterisk if file is selected */}
+                            {
+                              // @ts-ignore
+                              uploadForm.watch(`${name}.file`) && <span className="text-red-500 ml-1">*</span>
+                            }
+                          </FormLabel>
+                          <FormControl>
+                            <Input placeholder={`Nomor ${name}`} {...field} value={(field.value as string) || ''} />
+                          </FormControl>
+                           <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                ))}
+            
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsDocUploadOpen(false)}>Batal</Button>
+                <Button
+                  type="submit"
+                  disabled={createMutation.isPending || !uploadForm.formState.isValid}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {createMutation.isPending ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Uploading...</>
+                  ) : (
+                    <><Upload className="mr-2 h-4 w-4" />Upload</>
                   )}
-                </div>
-                <div className="space-y-2">
-                  <Label>Nomor Sertifikat</Label>
-                  <Input
-                    placeholder={`Nomor ${name}`}
-                    value={field.nomorSertifikat}
-                    onChange={(e) => handleDocFieldChange(name, { nomorSertifikat: e.target.value })}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDocUploadOpen(false)}>Batal</Button>
-            <Button
-              onClick={handleDocUploadSubmit}
-              disabled={!Object.values(docFields).some(f => f.file && f.nomorSertifikat) || createMutation.isPending}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              {createMutation.isPending ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Uploading...</>
-              ) : (
-                <><Upload className="mr-2 h-4 w-4" />Upload</>
-              )}
-            </Button>
-          </DialogFooter>
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 
@@ -782,11 +894,35 @@ export function CertificatesPage() {
 
                     <div className="space-y-2">
                       <Label className="text-xs">Nomor Sertifikat</Label>
-                      <Input
-                        placeholder="Masukkan nomor sertifikat"
-                        value={item.nomorSertifikat}
-                        onChange={(e) => handleScanResultEdit(index, { nomorSertifikat: e.target.value })}
-                      />
+                      {item.isEditingNomor ? (
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Masukkan nomor sertifikat"
+                            value={item.nomorSertifikat}
+                            onChange={(e) => handleScanResultEdit(index, { nomorSertifikat: e.target.value })}
+                            className="flex-1"
+                          />
+                          <Button size="sm" variant="ghost" onClick={() => handleScanResultEdit(index, { isEditingNomor: false })}>
+                            <Check className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className={cn(
+                            "flex-1 font-medium",
+                            !item.nomorSertifikat ? "text-zinc-400 italic" : "text-zinc-900 dark:text-zinc-100"
+                          )}>
+                            {item.nomorSertifikat || "(Klik pensil untuk input)"}
+                          </span>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            onClick={() => handleScanResultEdit(index, { isEditingNomor: true, nomorSertifikat: item.nomorSertifikat })}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -822,71 +958,112 @@ export function CertificatesPage() {
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold">Edit Sertifikat</DialogTitle>
           </DialogHeader>
-          {editingCert && (
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Nama Dokumen</Label>
-                <Input
-                  value={editingCert.certificateName}
-                  onChange={(e) => setEditingCert({ ...editingCert, certificateName: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Nomor Sertifikat</Label>
-                <Input
-                  value={editingCert.nomorSertifikat}
-                  onChange={(e) => setEditingCert({ ...editingCert, nomorSertifikat: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Upload Ulang File (opsional)</Label>
-                {editingCert.file ? (
-                  <div className="group relative flex items-center gap-3 rounded-lg border border-zinc-200 bg-white p-3 shadow-sm transition-all hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-zinc-700">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
-                      <ScanLine className="h-5 w-5 text-zinc-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{editingCert.file.name}</p>
-                      <p className="text-xs text-zinc-500">{(editingCert.file.size / 1024).toFixed(1)} KB</p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-zinc-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                      onClick={() => setEditingCert({ ...editingCert, file: null })}
-                      title="Remove"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <FileDropzone
-                    accept=".jpeg,.jpg,.png,.pdf"
-                    maxFiles={1}
-                    onFilesAdded={(files) => setEditingCert({ ...editingCert, file: files[0] ?? null })}
-                    className="h-32"
-                  />
+
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4 py-4">
+              <FormField
+                control={editForm.control}
+                name="certificateName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nama Sertifikat</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Masukkan nama sertifikat" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-                <p className="text-xs text-zinc-500">Kosongkan jika tidak ingin mengganti file.</p>
+              />
+
+              <FormField
+                control={editForm.control}
+                name="nomorSertifikat"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nomor Sertifikat</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Masukkan nomor sertifikat" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* File Upload (Optional override) */}
+              <div className="space-y-2">
+                  <Label>Ganti File (Optional)</Label>
+                  <FileDropzone
+                      accept=".jpeg,.jpg,.png,.pdf"
+                      maxFiles={1}
+                      onFilesAdded={(files) => editForm.setValue("file", files[0])}
+                      className="h-24" 
+                  />
+                  {/* Show selected file name if any */}
+                  {editForm.watch("file") && (
+                      <p className="text-sm text-green-600 mt-1">
+                          File terpilih: {editForm.watch("file")?.name}
+                      </p>
+                  )}
               </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsEditOpen(false); setEditingCert(null); }}>Batal</Button>
-            <Button
-              onClick={handleEditSubmit}
-              disabled={!editingCert?.certificateName || !editingCert?.nomorSertifikat || updateMutation.isPending}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>Batal</Button>
+                <Button
+                  type="submit"
+                  disabled={updateMutation.isPending}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {updateMutation.isPending ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</>
+                  ) : (
+                    "Simpan Perubahan"
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* === Dialog: Delete Confirmation === */}
+      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <DialogContent className="w-[calc(100%-2rem)] sm:max-w-[400px] p-6 overflow-hidden border-0 shadow-2xl rounded-xl">
+          <DialogHeader className="mb-4">
+            <DialogTitle className="text-xl font-bold text-zinc-900">Hapus Sertifikat</DialogTitle>
+          </DialogHeader>
+          
+          <p className="text-sm text-zinc-600">
+            Apakah Anda yakin ingin menghapus sertifikat ini? Tindakan ini tidak dapat dibatalkan.
+          </p>
+
+          <DialogFooter className="flex flex-row justify-end gap-3 pt-4">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setIsDeleteOpen(false)}
+              className="h-11 px-6 border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900"
             >
-              {updateMutation.isPending ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</>
-              ) : (
-                <><Check className="mr-2 h-4 w-4" />Simpan</>
-              )}
+              Batal
+            </Button>
+            <Button 
+              type="button"
+              onClick={confirmDelete}
+              disabled={deleteMutation.isPending}
+              className="h-11 px-6 bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/20"
+            >
+              {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Hapus
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Preview Dialog */}
+      <FilePreviewDialog 
+        open={isPreviewOpen} 
+        onOpenChange={setIsPreviewOpen} 
+        file={previewFile} 
+      />
     </div>
   )
 }

@@ -7,6 +7,9 @@ interface ScanResult {
   trainingName: string;
   confidence: number;
   status: string;
+  certificate_id?: string;
+  confidence_id?: number;
+  raw_text?: string;
 }
 
 export function useScanCertificates() {

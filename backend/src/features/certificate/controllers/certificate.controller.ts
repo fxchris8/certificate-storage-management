@@ -14,7 +14,11 @@ export class CertificateController {
   getCertificatesBySeamanCode = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { seamanCode } = req.params;
-      const result = await this.certificateService.getCertificatesBySeamanCode(seamanCode);
+      const page = req.query.page ? parseInt(req.query.page as string) : 1;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      const search = req.query.search as string | undefined;
+
+      const result = await this.certificateService.getCertificatesBySeamanCode(seamanCode, { page, limit, search });
       res.status(result.success ? 200 : 404).json(result);
     } catch (error) {
       next(error);

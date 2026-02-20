@@ -7,15 +7,31 @@ export class UserRepository {
     this.prisma = prismaClient;
   }
 
-  async findAllUsers() {
-    return this.prisma.user.findMany({
-      select: {
-        id: true,
-        username: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+  async findAllUsers(params?: { skip?: number; take?: number; search?: string }) {
+    const { skip, take, search } = params || {};
+    const where: any = {};
+
+    if (search) {
+      where.username = { contains: search, mode: 'insensitive' };
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.user.findMany({
+        skip,
+        take,
+        where,
+        select: {
+          id: true,
+          username: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return { data, total };
   }
 
   async findUserByUsername(username: string) {

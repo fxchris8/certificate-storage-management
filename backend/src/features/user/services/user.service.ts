@@ -13,9 +13,21 @@ export class UserService {
     return unifiedResponse(true, 'Ok, From user service');
   }
 
-  async getAllUsers() {
-    const users = await this.userRepository.findAllUsers();
-    return unifiedResponse(true, SUCCESS.USER_FOUND, users);
+  async getAllUsers(params?: { page?: number; limit?: number; search?: string }) {
+    const { page = 1, limit = 10, search } = params || {};
+    const skip = (page - 1) * limit;
+
+    const { data, total } = await this.userRepository.findAllUsers({ skip, take: limit, search });
+
+    return unifiedResponse(true, SUCCESS.USER_FOUND, {
+      data,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      }
+    });
   }
 
   async login(loginInputObj: LoginInputTypes) {

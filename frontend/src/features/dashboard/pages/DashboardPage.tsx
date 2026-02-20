@@ -1,6 +1,8 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { z } from "zod"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import {
   Table,
   TableBody,
@@ -12,7 +14,14 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
 import { cn } from "@/lib/utils"
 import { Plus, Download, MoreHorizontal, Filter, Edit, Trash2, Search, Loader2 } from "lucide-react"
 import {
@@ -44,21 +53,15 @@ import { useDeletePerson } from "@/features/person/_hooks/useDeletePerson"
 import { useGetStats } from "@/features/person/_hooks/useGetStats"
 import { Person } from "@/features/person/types/person.types"
 
-const ITEMS_PER_PAGE = 5
-
 // Zod Schema
 const seafarerSchema = z.object({
   name: z.string().min(1, "Full Name is required"),
   seamancode: z.string().min(1, "Seaman Code is required"),
 })
 
-interface PersonFormState {
-  name: string;
-  seamancode: string;
-}
+type SeafarerFormValues = z.infer<typeof seafarerSchema>
 
 export function DashboardPage() {
-  const { data: persons = [], isLoading, error } = useGetPersons()
   const { data: stats } = useGetStats()
   const { mutate: createPerson, isPending: isCreating } = usePostPerson()
   const { mutate: updatePerson, isPending: isUpdating } = usePutPerson()
@@ -69,19 +72,36 @@ export function DashboardPage() {
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const [formData, setFormData] = useState<PersonFormState>({ name: "", seamancode: "" })
+  const [debouncedSearch, setDebouncedSearch] = useState("")
+
+  // Debounce search by 400ms
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+      setCurrentPage(1)
+    }, 400)
+    return () => clearTimeout(timeout)
+  }, [searchQuery])
+
+  const { data: personsData, isLoading, error } = useGetPersons({
+    page: currentPage,
+    limit: 10,
+    search: debouncedSearch,
+  })
+
+  const currentPersons = personsData?.data ?? []
+  const totalPages = personsData?.meta?.totalPages ?? 1
+  const startIndex = (currentPage - 1) * 10
+
+  const form = useForm<SeafarerFormValues>({
+    resolver: zodResolver(seafarerSchema),
+    mode: "onChange",
+    defaultValues: {
+      name: "",
+      seamancode: "",
+    },
+  })
   const navigate = useNavigate()
-
-  // Filter by search
-  const filteredPersons = persons.filter((person) =>
-    person.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    person.seamancode.toLowerCase().includes(searchQuery.toLowerCase())
-  )
-
-  // Pagination
-  const totalPages = Math.ceil(filteredPersons.length / ITEMS_PER_PAGE)
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
-  const currentPersons = filteredPersons.slice(startIndex, startIndex + ITEMS_PER_PAGE)
 
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
@@ -91,13 +111,19 @@ export function DashboardPage() {
 
   const handleOpenCreate = () => {
     setSelectedPerson(null)
-    setFormData({ name: "", seamancode: "" })
+    form.reset({
+      name: "",
+      seamancode: "",
+    })
     setIsEditOpen(true)
   }
 
   const handleOpenEdit = (person: Person) => {
     setSelectedPerson(person)
-    setFormData({ name: person.name, seamancode: person.seamancode })
+    form.reset({
+      name: person.name,
+      seamancode: person.seamancode,
+    })
     setIsEditOpen(true)
   }
 
@@ -106,29 +132,21 @@ export function DashboardPage() {
     setIsDeleteOpen(true)
   }
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault()
-
-    const validation = seafarerSchema.safeParse(formData)
-    if (!validation.success) {
-      alert(`Error: ${validation.error.issues[0].message}`)
-      return
-    }
-
+  const onSubmit = (data: SeafarerFormValues) => {
     if (selectedPerson) {
       updatePerson({
         id: selectedPerson.id,
         data: {
-          name: formData.name,
-          seamancode: formData.seamancode,
+          name: data.name,
+          seamancode: data.seamancode,
         }
       }, {
         onSuccess: () => setIsEditOpen(false)
       })
     } else {
       createPerson({
-        name: formData.name,
-        seamancode: formData.seamancode,
+        name: data.name,
+        seamancode: data.seamancode,
       }, {
         onSuccess: () => setIsEditOpen(false)
       })
@@ -367,53 +385,55 @@ export function DashboardPage() {
             </DialogTitle>
           </DialogHeader>
           
-          <form onSubmit={handleSave} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-sm font-semibold text-zinc-900">
-                  Seafarer Name
-                </Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="h-11 bg-white border-zinc-200 transition-all"
-                  placeholder="Enter seafarer full name"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                 <Label htmlFor="code" className="text-sm font-semibold text-zinc-900">
-                  Seaman Code
-                </Label>
-                <Input
-                  id="code"
-                  value={formData.seamancode}
-                  onChange={(e) => setFormData({...formData, seamancode: e.target.value})}
-                  className="h-11 bg-white border-zinc-200 transition-all"
-                  placeholder="Enter seaman code"
-                  required
-                />
-            </div>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Seafarer Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter seafarer full name" className="h-11 bg-white border-zinc-200 transition-all" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="seamancode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Seaman Code</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter seaman code" className="h-11 bg-white border-zinc-200 transition-all" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <DialogFooter className="flex flex-row justify-end gap-3 pt-2">
-               <Button 
-                 type="button" 
-                 variant="outline" 
-                 onClick={() => setIsEditOpen(false)}
-                 className="h-11 px-6 border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900"
-               >
-                  Cancel
-               </Button>
-              <Button 
-                type="submit" 
-                disabled={isCreating || isUpdating}
-                className="h-11 px-6 bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/20"
-              >
-                  {(isCreating || isUpdating) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {selectedPerson ? "Save Changes" : "Save Seafarer"}
-              </Button>
-            </DialogFooter>
-          </form>
+              <DialogFooter className="flex flex-row justify-end gap-3 pt-2">
+                 <Button 
+                   type="button" 
+                   variant="outline" 
+                   onClick={() => setIsEditOpen(false)}
+                   className="h-11 px-6 border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900"
+                 >
+                    Cancel
+                 </Button>
+                <Button 
+                  type="submit" 
+                  disabled={isCreating || isUpdating || !form.formState.isValid}
+                  className="h-11 px-6 bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/20"
+                >
+                    {(isCreating || isUpdating) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {selectedPerson ? "Save Changes" : "Save Seafarer"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
       

@@ -7,9 +7,21 @@ import { CreatePersonInput, UpdatePersonInput } from '../types/person.types';
 export class PersonService {
   constructor(private readonly personRepository: PersonRepository) {}
 
-  async getAllPersons() {
-    const persons = await this.personRepository.findAll();
-    return unifiedResponse(true, SUCCESS.PERSON_FOUND, persons);
+  async getAllPersons(params?: { page?: number; limit?: number; search?: string }) {
+    const { page = 1, limit = 10, search } = params || {};
+    const skip = (page - 1) * limit;
+
+    const { data, total } = await this.personRepository.findAll({ skip, take: limit, search });
+    
+    return unifiedResponse(true, SUCCESS.PERSON_FOUND, {
+      data,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      }
+    });
   }
 
   async getPersonById(id: string) {
