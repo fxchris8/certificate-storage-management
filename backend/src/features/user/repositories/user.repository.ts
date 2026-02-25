@@ -67,7 +67,29 @@ export class UserRepository {
     });
   }
 
-  async updateUser(userId: string, data: { username?: string; passwordHash?: string }) {
+  async findBySsoId(ssoId: string) {
+    return this.prisma.user.findUnique({
+      where: { ssoId },
+      select: {
+        id: true,
+        username: true,
+        ssoId: true,
+      },
+    });
+  }
+
+  async createSsoUser(data: { username: string; ssoId: string }) {
+    return this.prisma.user.create({
+      data,
+      select: {
+        id: true,
+        username: true,
+        ssoId: true,
+      },
+    });
+  }
+
+  async updateUser(userId: string, data: { username?: string; passwordHash?: string; ssoId?: string }) {
     return this.prisma.user.update({
       where: { id: userId },
       data,

@@ -1,4 +1,5 @@
-import { Button } from "@/components/ui/button"
+import { useSearchParams } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -6,8 +7,8 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Form,
   FormControl,
@@ -15,21 +16,32 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
-import { usePostLogin } from "@/features/auth/_hooks/@post/usePostLogin"
-import { LoginFormData, loginSchema } from "@/types/loginSchema"
+} from "@/components/ui/form";
+import { usePostLogin } from "@/features/auth/_hooks/@post/usePostLogin";
+import { LoginFormData, loginSchema } from "@/types/loginSchema";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form"
+import { useForm } from "react-hook-form";
+
+const SSO_INITIATE_URL =
+  (import.meta.env.VITE_API_URL ?? "http://localhost:5000") +
+  "/api/auth/sso/initiate";
 
 export function LoginPage() {
   const { mutate: login, isPending: isLoading, error } = usePostLogin();
-  
+  const [searchParams] = useSearchParams();
+  const ssoError = searchParams.get("sso_error");
+
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
 
   const onSubmit = (data: LoginFormData) => {
     login(data);
+  };
+
+  const handleSsoLogin = () => {
+    // Full page redirect — the backend SSO route handles the OAuth flow.
+    window.location.href = SSO_INITIATE_URL;
   };
 
   return (
@@ -53,7 +65,11 @@ export function LoginPage() {
                   <FormItem>
                     <FormLabel>Username</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter your username" disabled={isLoading} {...field} />
+                      <Input
+                        placeholder="Enter your username"
+                        disabled={isLoading}
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -66,29 +82,76 @@ export function LoginPage() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" disabled={isLoading} {...field} />
+                      <Input
+                        type="password"
+                        placeholder="••••••••"
+                        disabled={isLoading}
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
+
               {error && (
-                  <p className="text-sm text-red-500 text-center">
-                      Login failed. Please check your credentials.
-                  </p>
+                <p className="text-sm text-red-500 text-center">
+                  Login gagal. Periksa kembali username dan password Anda.
+                </p>
               )}
 
-              <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700" disabled={isLoading}>
+              {ssoError && (
+                <p className="text-sm text-red-500 text-center">
+                  Login SSO gagal: {decodeURIComponent(ssoError)}
+                </p>
+              )}
+
+              <Button
+                type="submit"
+                className="w-full bg-indigo-600 hover:bg-indigo-700"
+                disabled={isLoading}
+              >
                 {isLoading ? "Signing In..." : "Sign In"}
               </Button>
             </form>
           </Form>
+
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white/80 dark:bg-slate-950/50 px-2 text-muted-foreground">
+                atau
+              </span>
+            </div>
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={handleSsoLogin}
+          >
+            <svg
+              className="mr-2 h-4 w-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 8v4l3 3" />
+            </svg>
+            Login dengan SSO SPIL
+          </Button>
         </CardContent>
         <CardFooter className="text-center text-sm text-muted-foreground">
-          &copy; 2024 Certificate Storage Management
+          &copy; 2026 Certificate Storage Management
         </CardFooter>
       </Card>
     </div>
-  )
+  );
 }

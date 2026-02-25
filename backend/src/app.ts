@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import { env } from './config/env-config';
 import userRoutes from './features/user/routes/user.routes';
 import authRoutes from './features/user/routes/auth.routes';
+import ssoRoutes from './features/user/routes/sso.routes';
 import personRoutes from './features/person/routes/person.routes';
 import certificateRoutes from './features/certificate/routes/certificate.routes';
 import { apiErrorHandler, unmatchedRoutes } from './middleware/api-error.middleware';
@@ -40,6 +41,7 @@ app.get('/heartbeat', (req: Request, res: Response): void => {
 // API Routes
 app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/auth/sso', ssoRoutes);
 app.use('/api/persons', personRoutes);
 app.use('/api/certificates', certificateRoutes);
 

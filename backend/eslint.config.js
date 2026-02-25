@@ -26,7 +26,6 @@ export default [
     plugins: {
       node: eslintPluginNode,
       '@typescript-eslint': typescriptEslintPlugin,
-      prettier: eslintPluginPrettier,
       import: eslintPluginImport,
       'simple-import-sort': eslintPluginSimpleImportSort,
       unicorn: eslintPluginUnicorn,

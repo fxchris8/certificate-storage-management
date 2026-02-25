@@ -1,0 +1,152 @@
+version: '3.8'
+
+# ============================================================
+# PRODUCTION Docker Compose
+# Usage: docker-compose -f docker-compose.prod.yml up -d
+# Requirements: create .env from .env.production.example first
+# ============================================================
+
+services:
+
+  # ----------------------------------------------------------
+  # PostgreSQL Database
+  # Not exposed to host — internal network only
+  # ----------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: cert-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  # ----------------------------------------------------------
+  # Backend API (Express + Prisma)
+  # Not exposed to host — traffic via Nginx
+  # ----------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cert-backend
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      LOG_LEVEL: ${LOG_LEVEL:-warn}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      SHADOW_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}_shadow
+      JWT_SECRET: ${JWT_SECRET}
+      WHITE_LIST_URLS: ${WHITE_LIST_URLS}
+      OCR_SERVICE_URL: http://ocr:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+    volumes:
+      - certificate_uploads:/app/uploads
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5000/heartbeat', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+  # ----------------------------------------------------------
+  # OCR Service (Python/FastAPI)
+  # Not exposed to host — internal only
+  # ----------------------------------------------------------
+  ocr:
+    build:
+      context: ./ocr
+      dockerfile: Dockerfile
+    container_name: cert-ocr
+    restart: always
+    environment:
+      PYTHONUNBUFFERED: "1"
+    networks:
+      - internal
+    volumes:
+      - ocr_results:/app/results
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  # ----------------------------------------------------------
+  # Frontend (React + Vite → Nginx static)
+  # Not exposed to host — traffic via Nginx reverse proxy
+  # ----------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+    container_name: cert-frontend
+    restart: always
+    networks:
+      - internal
+    depends_on:
+      backend:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+
+  # ----------------------------------------------------------
+  # Nginx — single public entry point
+  # Reverse proxy: / → frontend, /api → backend
+  # ----------------------------------------------------------
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: cert-nginx
+    restart: always
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  certificate_uploads:
+  ocr_results:

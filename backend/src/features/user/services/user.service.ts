@@ -38,7 +38,12 @@ export class UserService {
       return unifiedResponse(false, ERROR.USER_NOT_FOUND);
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.passwordHash || '');
+    // SSO-only users have no passwordHash — reject password login immediately.
+    if (!user.passwordHash) {
+      return unifiedResponse(false, 'Invalid credentials');
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
       return unifiedResponse(false, 'Invalid credentials');
     }
