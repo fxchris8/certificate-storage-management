@@ -21,15 +21,27 @@ import { usePostLogin } from "@/features/auth/_hooks/@post/usePostLogin";
 import { LoginFormData, loginSchema } from "@/types/loginSchema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { useEffect } from "react";
+import { BASE_URL } from "@/lib/api";
 
 const SSO_INITIATE_URL =
-  (import.meta.env.VITE_API_URL ?? "http://localhost:5000") +
-  "/api/auth/sso/initiate";
+  (BASE_URL ?? "http://localhost:5000") + "/auth/sso/initiate";
 
 export function LoginPage() {
   const { mutate: login, isPending: isLoading, error } = usePostLogin();
   const [searchParams] = useSearchParams();
   const ssoError = searchParams.get("sso_error");
+
+  useEffect(() => {
+    const loginSSO = searchParams.get("login_sso");
+    const clientId = searchParams.get("client_id");
+
+    if (loginSSO === "true" && clientId === import.meta.env.VITE_SSO_CLIENT_ID) {
+      // Lakukan proses login otomatis atau validasi SSO
+      // Setelah sukses, redirect kembali ke portal SSO
+      handleSsoLogin();
+    }
+  }, [searchParams]);
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),

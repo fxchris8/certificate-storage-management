@@ -65,6 +65,8 @@ services:
     restart: unless-stopped
     # ports:
     # - "${FRONTEND_PORT:-3000}:80"
+    environment:
+      VITE_SSO_CLIENT_ID: ${SSO_CLIENT_ID}
     depends_on:
       - backend
     networks:
