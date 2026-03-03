@@ -10,6 +10,10 @@ export const SUCCESS = {
   CERTIFICATE_CREATED: 'Certificate created successfully',
   CERTIFICATE_UPDATED: 'Certificate updated successfully',
   CERTIFICATE_DELETED: 'Certificate deleted successfully',
+  EXTERNAL_SUBMISSION_CREATED: 'External submission created successfully',
+  EXTERNAL_SUBMISSION_FOUND: 'External submission found',
+  EXTERNAL_SUBMISSION_APPROVED: 'Submission approved successfully',
+  EXTERNAL_SUBMISSION_REJECTED: 'Submission rejected successfully',
 };
 
 export const ERROR = {
@@ -30,4 +34,7 @@ export const ERROR = {
   ORIGIN_HEADER_IS_MISSING: 'Origin header is missing',
   ACCESS_FORBIDDEN: 'Access Forbidden',
   ROUTE_NOT_FOUND: 'Route not found or wrong API method',
+  EXTERNAL_SUBMISSION_NOT_FOUND: 'External submission not found',
+  UNAUTHORIZED_API_KEY: 'Unauthorized: Invalid API Key',
+  INVALID_SUBMISSION_STATUS: 'Invalid submission status',
 };

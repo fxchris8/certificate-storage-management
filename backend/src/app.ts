@@ -8,6 +8,7 @@ import authRoutes from './features/user/routes/auth.routes';
 import ssoRoutes from './features/user/routes/sso.routes';
 import personRoutes from './features/person/routes/person.routes';
 import certificateRoutes from './features/certificate/routes/certificate.routes';
+import externalSubmissionRoutes from './features/external-submission/routes/external-submission.routes';
 import { apiErrorHandler, unmatchedRoutes } from './middleware/api-error.middleware';
 import { pinoLogger, loggerMiddleware } from './middleware/pino-logger';
 // import morgan from 'morgan';
@@ -33,7 +34,6 @@ app.get('/', hostWhitelist(allowedURLs), (req: Request, res: Response): void => 
 });
 
 app.get('/heartbeat', (req: Request, res: Response): void => {
-  req.log.info('Heartbeat ok');
   res.send('ok');
   return;
 });
@@ -44,6 +44,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/auth/sso', ssoRoutes);
 app.use('/api/persons', personRoutes);
 app.use('/api/certificates', certificateRoutes);
+app.use('/api/external-submissions', externalSubmissionRoutes);
 
 // Error Handling Middleware (Optional)
 // For prisma error and other error

@@ -104,6 +104,48 @@ export class CertificateController {
         return;
       }
 
+      // Handle external URLs (from SPIL) - proxy the request
+      if (result.isExternal && result.externalUrl) {
+        try {
+          const response = await fetch(result.externalUrl);
+          if (!response.ok) {
+            res.status(404).json({ success: false, message: 'External file not found' });
+            return;
+          }
+          
+          const contentType = response.headers.get('content-type') || 'application/octet-stream';
+          const buffer = await response.arrayBuffer();
+          
+          // Override Helmet security headers to allow iframe embedding
+          res.removeHeader('X-Frame-Options');
+          res.removeHeader('Content-Security-Policy');
+          res.removeHeader('Cross-Origin-Resource-Policy');
+          res.setHeader('Content-Security-Policy', "frame-ancestors *");
+          res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+
+          res.setHeader('Content-Type', contentType);
+          res.send(Buffer.from(buffer));
+        } catch (error) {
+          res.status(500).json({ success: false, message: 'Failed to fetch external file' });
+        }
+        return;
+      }
+
+      // Handle local files
+      // Override Helmet security headers to allow iframe embedding
+      res.removeHeader('X-Frame-Options');
+      res.removeHeader('Content-Security-Policy');
+      res.removeHeader('Cross-Origin-Resource-Policy');
+      res.setHeader('Content-Security-Policy', "frame-ancestors *");
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+
+      // Override Helmet security headers to allow iframe embedding
+      res.removeHeader('X-Frame-Options');
+      res.removeHeader('Content-Security-Policy');
+      res.removeHeader('Cross-Origin-Resource-Policy');
+      res.setHeader('Content-Security-Policy', "frame-ancestors *");
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+
       res.sendFile(result.filePath!);
     } catch (error) {
       next(error);
@@ -120,6 +162,32 @@ export class CertificateController {
         return;
       }
 
+      // Handle external URLs (from SPIL) - proxy the request
+      if (result.isExternal && result.externalUrl) {
+        try {
+          const response = await fetch(result.externalUrl);
+          if (!response.ok) {
+            res.status(404).json({ success: false, message: 'External file not found' });
+            return;
+          }
+          
+          const contentType = response.headers.get('content-type') || 'application/octet-stream';
+          const buffer = await response.arrayBuffer();
+          
+          // Generate filename from certificate name or nomor sertifikat
+          const ext = contentType.includes('pdf') ? 'pdf' : contentType.includes('png') ? 'png' : 'jpg';
+          const filename = `${result.certificate?.certificateName || nomorSertifikat}.${ext}`;
+          
+          res.setHeader('Content-Type', contentType);
+          res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+          res.send(Buffer.from(buffer));
+        } catch (error) {
+          res.status(500).json({ success: false, message: 'Failed to fetch external file' });
+        }
+        return;
+      }
+
+      // Handle local files
       const fileName = path.basename(result.filePath!);
       res.download(result.filePath!, fileName);
     } catch (error) {

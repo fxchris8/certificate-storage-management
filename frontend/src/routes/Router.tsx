@@ -7,6 +7,8 @@ import { DashboardLayout } from "@/layouts/DashboardLayout";
 import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
 import { UserDashboardPage } from "@/features/user/pages/UserDashboardPage";
 import { CertificatesPage } from "@/features/dashboard/pages/CertificatesPage";
+import { ExternalSubmissionsPage } from "@/features/external-submission/pages/ExternalSubmissionsPage";
+import { ExternalSubmissionDetailPage } from "@/features/external-submission/pages/ExternalSubmissionDetailPage";
 
 const Router = [
   {
@@ -30,6 +32,8 @@ const Router = [
             { index: true, element: <DashboardPage /> },
             { path: "users", element: <UserDashboardPage /> },
             { path: "certificates/:seamancode", element: <CertificatesPage /> },
+            { path: "external-submissions", element: <ExternalSubmissionsPage /> },
+            { path: "external-submissions/:id", element: <ExternalSubmissionDetailPage /> },
         ]
       },
     ],

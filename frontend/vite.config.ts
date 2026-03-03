@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: true, // Listen on all addresses, including LAN and public addresses
-    port: 5173,
+    port: 3000,
     watch: {
       usePolling: true,
     },

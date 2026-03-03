@@ -11,23 +11,25 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(uuid()) @db.Uuid
-  username     String   @unique
-  passwordHash String?  @map("password_hash")
-  ssoId        String?  @unique @map("sso_id")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id                   String                @id @default(uuid()) @db.Uuid
+  username             String                @unique
+  passwordHash         String?               @map("password_hash")
+  ssoId                String?               @unique @map("sso_id")
+  createdAt            DateTime              @default(now()) @map("created_at")
+  updatedAt            DateTime              @updatedAt @map("updated_at")
+  reviewedSubmissions  ExternalSubmission[]
 
   @@map("users")
 }
 
 model Person {
-  id          String        @id @default(uuid()) @db.Uuid
-  name        String
-  seamancode  String
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
-  certificates Certificate[]
+  id                  String                @id @default(uuid()) @db.Uuid
+  name                String
+  seamancode          String
+  createdAt           DateTime              @default(now()) @map("created_at")
+  updatedAt           DateTime              @updatedAt @map("updated_at")
+  certificates        Certificate[]
+  externalSubmissions ExternalSubmission[]
 
   @@map("persons")
 }
@@ -44,4 +46,26 @@ model Certificate {
   person          Person   @relation(fields: [personId], references: [id])
 
   @@map("certificates")
+}
+
+model ExternalSubmission {
+  id                    String   @id @default(uuid()) @db.Uuid
+  externalSubmissionId  String   @unique @map("external_submission_id")
+  seamanCode            String   @map("seaman_code")
+  seamanName            String   @map("seaman_name")
+  certificateName       String   @map("certificate_name")
+  nomorSertifikat       String   @map("nomor_sertifikat")
+  externalFileUrl       String   @map("external_file_url")
+  status                String   @default("PENDING")
+  reviewNotes           String?  @map("review_notes")
+  reviewedBy            String?  @map("reviewed_by") @db.Uuid
+  reviewedAt            DateTime? @map("reviewed_at")
+  personId              String?  @map("person_id") @db.Uuid
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  reviewer              User?    @relation(fields: [reviewedBy], references: [id])
+  person                Person?  @relation(fields: [personId], references: [id])
+
+  @@map("external_submissions")
 }

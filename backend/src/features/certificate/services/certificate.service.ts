@@ -92,13 +92,19 @@ export class CertificateService {
       return { success: false, message: ERROR.CERTIFICATE_NOT_FOUND };
     }
 
+    // Check if fileUrl is an external URL (from SPIL)
+    if (certificate.fileUrl.startsWith('http://') || certificate.fileUrl.startsWith('https://')) {
+      return { success: true, isExternal: true, externalUrl: certificate.fileUrl, certificate };
+    }
+
+    // Local file path
     const filePath = path.resolve(certificate.fileUrl);
     const exists = await fs.pathExists(filePath);
     if (!exists) {
       return { success: false, message: 'Certificate file not found on server' };
     }
 
-    return { success: true, filePath, certificate };
+    return { success: true, isExternal: false, filePath, certificate };
   }
 
   async downloadCertificateFile(seamanCode: string, nomorSertifikat: string) {

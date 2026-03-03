@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, FileText, Settings, LogOut, Ship, Users } from "lucide-react"
+import { LayoutDashboard, FileText, Settings, LogOut, Ship, Users, Inbox } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useSignOut } from "@/features/auth/_hooks/useSignOut"
 
@@ -33,6 +33,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
   const links = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Users", href: "/dashboard/users", icon: Users },
+    { name: "External Submissions", href: "/dashboard/external-submissions", icon: Inbox },
   ]
 
   return (
