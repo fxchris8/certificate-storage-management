@@ -18,12 +18,9 @@ export function ExternalSubmissionDetailPage() {
   const [reviewNotes, setReviewNotes] = useState('');
 
   const handleApprove = () => {
-    if (!reviewNotes.trim()) {
-      alert('Please provide review notes');
-      return;
-    }
+    if (!window.confirm('Approve this certificate submission?')) return;
     approve(
-      { id: id!, data: { reviewNotes } },
+      { id: id!, data: { reviewNotes: reviewNotes.trim() || '' } },
       {
         onSuccess: () => navigate('/dashboard/external-submissions'),
       }
@@ -32,9 +29,10 @@ export function ExternalSubmissionDetailPage() {
 
   const handleReject = () => {
     if (!reviewNotes.trim()) {
-      alert('Please provide review notes');
+      alert('Review notes wajib diisi saat menolak submission');
       return;
     }
+    if (!window.confirm('Reject this certificate submission?')) return;
     reject(
       { id: id!, data: { reviewNotes } },
       {
@@ -146,7 +144,7 @@ export function ExternalSubmissionDetailPage() {
           <h2 className="text-lg font-semibold mb-4">Review Action</h2>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="reviewNotes">Review Notes</Label>
+              <Label htmlFor="reviewNotes">Review Notes <span className="text-zinc-400 text-xs font-normal">(wajib diisi saat reject)</span></Label>
               <textarea
                 id="reviewNotes"
                 className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"

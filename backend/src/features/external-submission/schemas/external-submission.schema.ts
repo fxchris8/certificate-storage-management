@@ -9,6 +9,10 @@ export const createExternalSubmissionSchema = z.object({
   // externalFileUrl removed - file is uploaded via multipart
 });
 
-export const reviewSubmissionSchema = z.object({
-  reviewNotes: z.string().min(1),
+export const approveSubmissionSchema = z.object({
+  reviewNotes: z.string().optional().default(''),
+});
+
+export const rejectSubmissionSchema = z.object({
+  reviewNotes: z.string().min(1, 'Review notes are required when rejecting'),
 });

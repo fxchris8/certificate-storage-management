@@ -22,10 +22,18 @@ export class ExternalSubmissionRepository {
     });
   }
 
-  async findAll(page?: number, limit?: number, status?: string): Promise<ExternalSubmission[]> {
+  async findAll(page?: number, limit?: number, status?: string, search?: string): Promise<ExternalSubmission[]> {
     const where: any = {};
     if (status) {
       where.status = status;
+    }
+    if (search) {
+      where.OR = [
+        { seamanCode: { contains: search, mode: 'insensitive' } },
+        { seamanName: { contains: search, mode: 'insensitive' } },
+        { certificateName: { contains: search, mode: 'insensitive' } },
+        { nomorSertifikat: { contains: search, mode: 'insensitive' } },
+      ];
     }
 
     if (page && limit) {
@@ -43,10 +51,18 @@ export class ExternalSubmissionRepository {
     });
   }
 
-  async count(status?: string): Promise<number> {
+  async count(status?: string, search?: string): Promise<number> {
     const where: any = {};
     if (status) {
       where.status = status;
+    }
+    if (search) {
+      where.OR = [
+        { seamanCode: { contains: search, mode: 'insensitive' } },
+        { seamanName: { contains: search, mode: 'insensitive' } },
+        { certificateName: { contains: search, mode: 'insensitive' } },
+        { nomorSertifikat: { contains: search, mode: 'insensitive' } },
+      ];
     }
     return this.prisma.externalSubmission.count({ where });
   }

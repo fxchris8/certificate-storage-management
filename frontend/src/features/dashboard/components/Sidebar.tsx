@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils"
 import { LayoutDashboard, FileText, Settings, LogOut, Ship, Users, Inbox } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useSignOut } from "@/features/auth/_hooks/useSignOut"
+import { useGetExternalSubmissions } from "@/features/external-submission/_hooks/useGetExternalSubmissions"
 
 interface SidebarProps {
   collapsed: boolean
@@ -14,6 +15,8 @@ export function Sidebar({ collapsed }: SidebarProps) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const logoutRef = useRef<HTMLDivElement>(null)
   const { signOut } = useSignOut()
+  const { data: pendingData } = useGetExternalSubmissions(1, 1, 'PENDING')
+  const pendingCount = pendingData?.pagination.totalCount ?? 0
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -31,9 +34,9 @@ export function Sidebar({ collapsed }: SidebarProps) {
   }, [showLogoutConfirm])
   
   const links = [
-    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Users", href: "/dashboard/users", icon: Users },
-    { name: "External Submissions", href: "/dashboard/external-submissions", icon: Inbox },
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, badge: 0 },
+    { name: "Users", href: "/dashboard/users", icon: Users, badge: 0 },
+    { name: "External Submissions", href: "/dashboard/external-submissions", icon: Inbox, badge: pendingCount },
   ]
 
   return (
@@ -79,7 +82,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
                     to={link.href}
                     title={collapsed ? link.name : undefined}
                     className={cn(
-                        "group flex items-center rounded-xl py-3 text-sm font-medium transition-all duration-200",
+                        "group relative flex items-center rounded-xl py-3 text-sm font-medium transition-all duration-200",
                         collapsed ? "justify-center px-0" : "px-4",
                         isActive 
                             ? "bg-red-50 text-red-600 shadow-sm dark:bg-red-950/20 dark:text-red-400" 
@@ -91,7 +94,15 @@ export function Sidebar({ collapsed }: SidebarProps) {
                       isActive ? "text-red-600 dark:text-red-400" : "text-zinc-400 group-hover:text-zinc-600",
                       !collapsed && "mr-3"
                     )} />
-                    {!collapsed && <span>{link.name}</span>}
+                    {!collapsed && <span className="flex-1">{link.name}</span>}
+                    {link.badge > 0 && (
+                      <span className={cn(
+                        "inline-flex items-center justify-center rounded-full text-xs font-semibold bg-red-500 text-white min-w-[18px] h-[18px] px-1",
+                        collapsed ? "absolute top-1 right-1 text-[10px] min-w-[15px] h-[15px]" : ""
+                      )}>
+                        {link.badge > 99 ? "99+" : link.badge}
+                      </span>
+                    )}
                     </Link>
                 )
                 })}

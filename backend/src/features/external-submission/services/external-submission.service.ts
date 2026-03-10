@@ -26,12 +26,12 @@ export class ExternalSubmissionService {
     }
   }
 
-  async getSubmissions(page?: number, limit?: number, status?: string) {
+  async getSubmissions(page?: number, limit?: number, status?: string, search?: string) {
     try {
-      const submissions = await this.externalSubmissionRepository.findAll(page, limit, status);
+      const submissions = await this.externalSubmissionRepository.findAll(page, limit, status, search);
       
       if (page && limit) {
-        const totalCount = await this.externalSubmissionRepository.count(status);
+        const totalCount = await this.externalSubmissionRepository.count(status, search);
         return unifiedResponse(true, SUCCESS.EXTERNAL_SUBMISSION_FOUND, {
           submissions,
           pagination: {

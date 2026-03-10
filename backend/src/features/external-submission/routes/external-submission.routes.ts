@@ -10,7 +10,7 @@ import { ExternalSubmissionController } from '../controllers/external-submission
 import { ExternalSubmissionRepository } from '../repositories/external-submission.repository.js';
 import { CertificateRepository } from '../../certificate/repositories/certificate.repository.js';
 import { ExternalSubmissionService } from '../services/external-submission.service.js';
-import { createExternalSubmissionSchema, reviewSubmissionSchema } from '../schemas/external-submission.schema.js';
+import { createExternalSubmissionSchema, approveSubmissionSchema, rejectSubmissionSchema } from '../schemas/external-submission.schema.js';
 
 // Multer configuration for file upload
 const uploadDir = path.join(process.cwd(), 'uploads', 'external-submissions');
@@ -67,14 +67,14 @@ router.get('/:id/view', externalSubmissionController.viewFile);
 router.post(
   '/:id/approve',
   auth,
-  validateRequest(reviewSubmissionSchema),
+  validateRequest(approveSubmissionSchema),
   externalSubmissionController.approveSubmission
 );
 
 router.post(
   '/:id/reject',
   auth,
-  validateRequest(reviewSubmissionSchema),
+  validateRequest(rejectSubmissionSchema),
   externalSubmissionController.rejectSubmission
 );
 

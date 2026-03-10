@@ -24,3 +24,7 @@ dist/
 
 info.txt
 src/logs/*
+
+# Uploaded files
+uploads/*
+!uploads/**/.gitkeep
