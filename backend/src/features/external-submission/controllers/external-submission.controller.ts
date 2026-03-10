@@ -65,6 +65,16 @@ export class ExternalSubmissionController {
     }
   };
 
+  getSubmissionStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { externalSubmissionId } = req.params;
+      const result = await this.externalSubmissionService.getSubmissionStatusByExternalId(externalSubmissionId as string);
+      res.status(result.success ? 200 : 404).json(result);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   viewFile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;

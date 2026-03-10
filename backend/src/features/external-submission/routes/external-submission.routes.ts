@@ -60,6 +60,7 @@ router.post(
   externalSubmissionController.createSubmission
 );
 
+router.get('/status/:externalSubmissionId', validateApiKey, externalSubmissionController.getSubmissionStatus);
 router.get('/', auth, externalSubmissionController.getSubmissions);
 router.get('/:id', auth, externalSubmissionController.getSubmissionById);
 router.get('/:id/view', externalSubmissionController.viewFile);

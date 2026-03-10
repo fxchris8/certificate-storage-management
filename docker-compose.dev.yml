@@ -34,14 +34,14 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.dev
     environment:
-      - VITE_API_URL=http://localhost:5001
+      - VITE_API_URL=http://localhost:5000/api
     volumes:
       - ./frontend/src:/app/src
       - ./frontend/public:/app/public
       - /app/node_modules
     command: npm run dev
     ports:
-      - "${FRONTEND_PORT:-5176}:5173"
+      - "${FRONTEND_PORT:-5176}:3000"
 
   # OCR with auto-reload
   ocr:

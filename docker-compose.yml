@@ -31,21 +31,22 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: ${NODE_ENV:-production}
-      PORT: ${BACKEND_PORT:-5000}
+      PORT: 5001
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-certificate_db}
       SHADOW_DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-certificate_db}_shadow
       JWT_SECRET: ${JWT_SECRET}
       WHITE_LIST_URLS: ${WHITE_LIST_URLS:-http://localhost:3000,http://localhost:5173,http://localhost:5176,http://localhost:5000,http://localhost:8080}
+      OCR_SERVICE_URL: http://ocr:8000
       SSO_FRONTEND_URL: ${SSO_FRONTEND_URL:-http://localhost:5173}
       SSO_BASE_URL: ${SSO_BASE_URL:-http://host.docker.internal:5000}
       SSO_CLIENT_ID: ${SSO_CLIENT_ID}
       SSO_CLIENT_SECRET: ${SSO_CLIENT_SECRET}
       SSO_CALLBACK_URL: ${SSO_CALLBACK_URL:-http://localhost:5001/api/auth/sso/callback}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5176}
+      EXTERNAL_API_KEY: ${EXTERNAL_API_KEY:-}
     ports:
       - "${BACKEND_PORT:-5000}:5001"
-      - "5556:5555" # For Prisma Studio (optional)
     depends_on:
       postgres:
         condition: service_healthy
@@ -53,6 +54,7 @@ services:
       - certificate-network
     volumes:
       - ./backend/prisma:/app/prisma
+      - certificate_uploads:/app/uploads
 
   # Frontend
   frontend:
@@ -95,3 +97,4 @@ networks:
 
 volumes:
   postgres_data:
+  certificate_uploads:

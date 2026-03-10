@@ -3,7 +3,6 @@ import { ExternalSubmissionRepository } from '../repositories/external-submissio
 import { CertificateRepository } from '../../certificate/repositories/certificate.repository.js';
 import { CreateExternalSubmissionInput, ReviewSubmissionInput } from '../types/external-submission.types.js';
 import { SUCCESS, ERROR } from '../../../constants/messages.js';
-import { env } from '../../../config/env-config.js';
 
 export class ExternalSubmissionService {
   constructor(
@@ -88,8 +87,6 @@ export class ExternalSubmissionService {
         });
       }
 
-      await this.sendCallbackToSpil(submission.externalSubmissionId, 'APPROVED', data.reviewNotes, userId);
-
       return unifiedResponse(true, SUCCESS.EXTERNAL_SUBMISSION_APPROVED, updated);
     } catch (error) {
       return unifiedResponse(false, ERROR.INTERNAL_SERVER_ERROR);
@@ -114,40 +111,27 @@ export class ExternalSubmissionService {
         userId
       );
 
-      await this.sendCallbackToSpil(submission.externalSubmissionId, 'REJECTED', data.reviewNotes, userId);
-
       return unifiedResponse(true, SUCCESS.EXTERNAL_SUBMISSION_REJECTED, updated);
     } catch (error) {
       return unifiedResponse(false, ERROR.INTERNAL_SERVER_ERROR);
     }
   }
 
-  private async sendCallbackToSpil(externalSubmissionId: string, status: string, reviewNotes: string, reviewedBy: string) {
-    if (!env.SPIL_CALLBACK_URL || !env.SPIL_CALLBACK_API_KEY) {
-      console.log('Callback skipped: SPIL_CALLBACK_URL or SPIL_CALLBACK_API_KEY not configured');
-      return;
-    }
-
+  async getSubmissionStatusByExternalId(externalSubmissionId: string) {
     try {
-      const response = await fetch(`${env.SPIL_CALLBACK_URL}/${externalSubmissionId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Callback-Key': env.SPIL_CALLBACK_API_KEY,
-        },
-        body: JSON.stringify({
-          status,
-          reviewNotes,
-          reviewedBy,
-          reviewedAt: new Date().toISOString(),
-        }),
-      });
-
-      if (!response.ok) {
-        console.error('Callback to SPIL failed:', response.statusText);
+      const submission = await this.externalSubmissionRepository.findByExternalSubmissionId(externalSubmissionId);
+      if (!submission) {
+        return unifiedResponse(false, ERROR.EXTERNAL_SUBMISSION_NOT_FOUND);
       }
+      return unifiedResponse(true, SUCCESS.EXTERNAL_SUBMISSION_FOUND, {
+        externalSubmissionId: submission.externalSubmissionId,
+        status: submission.status,
+        reviewNotes: submission.reviewNotes,
+        reviewedBy: submission.reviewedBy,
+        reviewedAt: submission.reviewedAt,
+      });
     } catch (error) {
-      console.error('Error sending callback to SPIL:', error);
+      return unifiedResponse(false, ERROR.INTERNAL_SERVER_ERROR);
     }
   }
 

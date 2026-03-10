@@ -73,6 +73,12 @@ export class ExternalSubmissionRepository {
     });
   }
 
+  async findByExternalSubmissionId(externalSubmissionId: string): Promise<ExternalSubmission | null> {
+    return this.prisma.externalSubmission.findFirst({
+      where: { externalSubmissionId },
+    });
+  }
+
   async updateStatus(
     id: string,
     status: string,

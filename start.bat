@@ -24,38 +24,38 @@ if not exist .env (
 )
 
 echo [1/4] Menghentikan container yang sedang berjalan...
-docker-compose down
+docker compose down
 
 echo.
 echo [2/4] Building images...
-docker-compose build
+docker compose -f docker-compose.yml -f docker-compose.dev.yml build
 
 echo.
 echo [3/4] Menjalankan semua services...
-docker-compose up -d
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 
 echo.
 echo [4/4] Menunggu services siap...
-timeout /t 10 /nobreak > NUL
+timeout /t 15 /nobreak > NUL
 
 echo.
 echo ========================================
 echo Status Services:
 echo ========================================
-docker-compose ps
+docker compose -f docker-compose.yml -f docker-compose.dev.yml ps
 
 echo.
 echo ========================================
 echo Aplikasi siap digunakan!
 echo ========================================
-echo Frontend:  http://localhost:3000
+echo Frontend:  http://localhost:5176
 echo Backend:   http://localhost:5000
 echo OCR:       http://localhost:8000
 echo PostgreSQL: localhost:5432
 echo ========================================
 echo.
-echo Untuk melihat logs: docker-compose logs -f
-echo Untuk menghentikan: docker-compose stop
+echo Untuk melihat logs: docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f
+echo Untuk menghentikan: docker compose -f docker-compose.yml -f docker-compose.dev.yml down
 echo ========================================
 echo.
 pause
