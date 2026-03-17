@@ -70,9 +70,9 @@ const certificateController = new CertificateController(certificateService);
 const router = Router();
 
 // All routes are protected
-router.get('/person/:seamanCode', auth, certificateController.getCertificatesBySeamanCode);
-router.get('/view/:seamanCode/:nomorSertifikat', certificateController.viewCertificateFile);
-router.get('/download/:seamanCode/:nomorSertifikat', auth, certificateController.downloadCertificateFile);
+router.get('/person/:seafarerCode', auth, certificateController.getCertificatesBySeafarerCode);
+router.get('/view/:seafarerCode/:nomorSertifikat', certificateController.viewCertificateFile);
+router.get('/download/:seafarerCode/:nomorSertifikat', auth, certificateController.downloadCertificateFile);
 router.get('/:id', auth, certificateController.getCertificateById);
 router.post('/', auth, uploadDisk.single('file'), certificateController.createCertificate);
 router.post('/scan', auth, uploadMemory.array('files', 20), certificateController.scanCertificates);

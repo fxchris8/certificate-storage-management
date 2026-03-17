@@ -5,10 +5,10 @@ export const createPersonSchema = z.object({
     .string()
     .min(1, { message: 'Name is required' })
     .max(255, { message: 'Name must not exceed 255 characters' }),
-  seamancode: z
+  seafarercode: z
     .string()
-    .min(1, { message: 'Seaman code is required' })
-    .max(50, { message: 'Seaman code must not exceed 50 characters' }),
+    .min(1, { message: 'Seafarer code is required' })
+    .max(50, { message: 'Seafarer code must not exceed 50 characters' }),
 });
 
 export const updatePersonSchema = z.object({
@@ -17,9 +17,9 @@ export const updatePersonSchema = z.object({
     .min(1, { message: 'Name must not be empty' })
     .max(255, { message: 'Name must not exceed 255 characters' })
     .optional(),
-  seamancode: z
+  seafarercode: z
     .string()
-    .min(1, { message: 'Seaman code must not be empty' })
-    .max(50, { message: 'Seaman code must not exceed 50 characters' })
+    .min(1, { message: 'Seafarer code must not be empty' })
+    .max(50, { message: 'Seafarer code must not exceed 50 characters' })
     .optional(),
 });

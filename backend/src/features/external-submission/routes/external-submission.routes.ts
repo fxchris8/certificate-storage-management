@@ -9,6 +9,7 @@ import { validateRequest } from '../../../middleware/validation.middleware.js';
 import { ExternalSubmissionController } from '../controllers/external-submission.controller.js';
 import { ExternalSubmissionRepository } from '../repositories/external-submission.repository.js';
 import { CertificateRepository } from '../../certificate/repositories/certificate.repository.js';
+import { PersonRepository } from '../../person/repositories/person.repository.js';
 import { ExternalSubmissionService } from '../services/external-submission.service.js';
 import { createExternalSubmissionSchema, approveSubmissionSchema, rejectSubmissionSchema } from '../schemas/external-submission.schema.js';
 
@@ -47,7 +48,8 @@ const upload = multer({
 const prisma = PrismaService.getInstance().client;
 const externalSubmissionRepository = new ExternalSubmissionRepository(prisma);
 const certificateRepository = new CertificateRepository(prisma);
-const externalSubmissionService = new ExternalSubmissionService(externalSubmissionRepository, certificateRepository);
+const personRepository = new PersonRepository(prisma);
+const externalSubmissionService = new ExternalSubmissionService(externalSubmissionRepository, certificateRepository, personRepository);
 const externalSubmissionController = new ExternalSubmissionController(externalSubmissionService);
 
 const router = Router();

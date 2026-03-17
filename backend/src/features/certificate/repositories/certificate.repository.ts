@@ -7,10 +7,10 @@ export class CertificateRepository {
     this.prisma = prismaClient;
   }
 
-  async findBySeamanCode(seamanCode: string, params?: { skip?: number; take?: number; search?: string }) {
+  async findBySeafarerCode(seafarerCode: string, params?: { skip?: number; take?: number; search?: string }) {
     const { skip, take, search } = params || {};
     const where: any = {
-      person: { seamancode: seamanCode },
+      person: { seafarercode: seafarerCode },
     };
 
     if (search) {
@@ -43,8 +43,8 @@ export class CertificateRepository {
     return { data, total };
   }
 
-  async checkMandatoryDocs(seamanCode: string): Promise<{ hasIjazah: boolean; hasEndorse: boolean; hasMedicalCheckup: boolean }> {
-    const baseWhere = { person: { seamancode: seamanCode } };
+  async checkMandatoryDocs(seafarerCode: string): Promise<{ hasIjazah: boolean; hasEndorse: boolean; hasMedicalCheckup: boolean }> {
+    const baseWhere = { person: { seafarercode: seafarerCode } };
 
     const [ijazah, endorse, medical] = await Promise.all([
       this.prisma.certificate.findFirst({ where: { ...baseWhere, certificateName: 'Ijazah' }, select: { id: true } }),
@@ -73,11 +73,11 @@ export class CertificateRepository {
     });
   }
 
-  async findBySeamanCodeAndNomor(seamanCode: string, nomorSertifikat: string) {
+  async findBySeafarerCodeAndNomor(seafarerCode: string, nomorSertifikat: string) {
     return this.prisma.certificate.findFirst({
       where: {
         nomorSertifikat,
-        person: { seamancode: seamanCode },
+        person: { seafarercode: seafarerCode },
       },
       select: {
         id: true,
@@ -131,10 +131,10 @@ export class CertificateRepository {
     });
   }
 
-  async findPersonBySeamanCode(seamanCode: string) {
+  async findPersonBySeafarerCode(seafarerCode: string) {
     return this.prisma.person.findFirst({
-      where: { seamancode: seamanCode },
-      select: { id: true, name: true, seamancode: true },
+      where: { seafarercode: seafarerCode },
+      select: { id: true, name: true, seafarercode: true },
     });
   }
 }

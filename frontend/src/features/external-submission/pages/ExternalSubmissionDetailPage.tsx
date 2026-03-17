@@ -77,12 +77,12 @@ export function ExternalSubmissionDetailPage() {
           <h2 className="text-lg font-semibold mb-4">Submission Details</h2>
           <div className="space-y-4">
             <div>
-              <Label className="text-zinc-500">Seaman Code</Label>
-              <p className="text-zinc-900 font-medium">{submission.seamanCode}</p>
+              <Label className="text-zinc-500">Seafarer Code</Label>
+              <p className="text-zinc-900 font-medium">{submission.seafarerCode}</p>
             </div>
             <div>
-              <Label className="text-zinc-500">Seaman Name</Label>
-              <p className="text-zinc-900 font-medium">{submission.seamanName}</p>
+              <Label className="text-zinc-500">Seafarer Name</Label>
+              <p className="text-zinc-900 font-medium">{submission.seafarerName}</p>
             </div>
             <div>
               <Label className="text-zinc-500">Certificate Name</Label>

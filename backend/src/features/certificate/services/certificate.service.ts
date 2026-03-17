@@ -11,8 +11,8 @@ import { CreateCertificateInput, UpdateCertificateInput, OcrScanResult, BulkCrea
 export class CertificateService {
   constructor(private readonly certificateRepository: CertificateRepository) {}
 
-  async getCertificatesBySeamanCode(seamanCode: string, params?: { page?: number; limit?: number; search?: string }) {
-    const person = await this.certificateRepository.findPersonBySeamanCode(seamanCode);
+  async getCertificatesBySeafarerCode(seafarerCode: string, params?: { page?: number; limit?: number; search?: string }) {
+    const person = await this.certificateRepository.findPersonBySeafarerCode(seafarerCode);
     if (!person) {
       return unifiedResponse(false, ERROR.PERSON_NOT_FOUND);
     }
@@ -21,8 +21,8 @@ export class CertificateService {
     const skip = (page - 1) * limit;
 
     const [{ data, total }, mandatoryFlags] = await Promise.all([
-      this.certificateRepository.findBySeamanCode(seamanCode, { skip, take: limit, search }),
-      this.certificateRepository.checkMandatoryDocs(seamanCode),
+      this.certificateRepository.findBySeafarerCode(seafarerCode, { skip, take: limit, search }),
+      this.certificateRepository.checkMandatoryDocs(seafarerCode),
     ]);
 
     return unifiedResponse(true, SUCCESS.CERTIFICATE_FOUND, {
@@ -86,8 +86,8 @@ export class CertificateService {
     }
   }
 
-  async viewCertificateFile(seamanCode: string, nomorSertifikat: string) {
-    const certificate = await this.certificateRepository.findBySeamanCodeAndNomor(seamanCode, nomorSertifikat);
+  async viewCertificateFile(seafarerCode: string, nomorSertifikat: string) {
+    const certificate = await this.certificateRepository.findBySeafarerCodeAndNomor(seafarerCode, nomorSertifikat);
     if (!certificate) {
       return { success: false, message: ERROR.CERTIFICATE_NOT_FOUND };
     }
@@ -107,8 +107,8 @@ export class CertificateService {
     return { success: true, isExternal: false, filePath, certificate };
   }
 
-  async downloadCertificateFile(seamanCode: string, nomorSertifikat: string) {
-    return this.viewCertificateFile(seamanCode, nomorSertifikat);
+  async downloadCertificateFile(seafarerCode: string, nomorSertifikat: string) {
+    return this.viewCertificateFile(seafarerCode, nomorSertifikat);
   }
 
   async scanCertificates(files: Express.Multer.File[]): Promise<OcrScanResult[]> {

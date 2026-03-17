@@ -111,7 +111,7 @@ interface ScanPreviewItem {
 }
 
 export function CertificatesPage() {
-  const { seamancode } = useParams()
+  const { seafarercode } = useParams()
   const navigate = useNavigate()
   const [currentPage, setCurrentPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState("")
@@ -169,8 +169,8 @@ export function CertificatesPage() {
 
   // Data fetching
   const { data: personsData } = useGetPersons()
-  const seafarer = personsData?.data?.find((p: {seamancode: string}) => p.seamancode === seamancode)
-  const { data: certificatesData, isLoading, isError } = useGetCertificates(seamancode, {
+  const seafarer = personsData?.data?.find((p: {seafarercode: string}) => p.seafarercode === seafarercode)
+  const { data: certificatesData, isLoading, isError } = useGetCertificates(seafarercode, {
     page: currentPage,
     limit: 10,
     search: debouncedSearch,
@@ -371,7 +371,7 @@ export function CertificatesPage() {
   const handleView = useCallback(async (nomorSertifikat: string) => {
     try {
       const response = await api.get(
-        `/certificates/view/${seamancode}/${encodeURIComponent(nomorSertifikat)}`,
+        `/certificates/view/${seafarercode}/${encodeURIComponent(nomorSertifikat)}`,
         { responseType: "blob" }
       )
       const blob = new Blob([response.data], { type: response.headers["content-type"] })
@@ -380,12 +380,12 @@ export function CertificatesPage() {
     } catch (error) {
       console.error("Failed to view certificate:", error)
     }
-  }, [seamancode])
+  }, [seafarercode])
 
   const handleDownload = useCallback(async (nomorSertifikat: string, certificateName?: string) => {
     try {
       const response = await api.get(
-        `/certificates/download/${seamancode}/${encodeURIComponent(nomorSertifikat)}`,
+        `/certificates/download/${seafarercode}/${encodeURIComponent(nomorSertifikat)}`,
         { responseType: "blob" }
       )
       const contentType = response.headers["content-type"] || "application/octet-stream"
@@ -410,7 +410,7 @@ export function CertificatesPage() {
     } catch (error) {
       console.error("Failed to download certificate:", error)
     }
-  }, [seamancode])
+  }, [seafarercode])
 
   if (!seafarer && !isLoading) {
     return (
@@ -451,7 +451,7 @@ export function CertificatesPage() {
             {seafarer?.name ?? "Loading..."}
           </h2>
           <p className="mt-1 text-zinc-500 dark:text-zinc-400">
-            Seaman Code: <span className="font-semibold">{seamancode}</span>
+            Seafarer Code: <span className="font-semibold">{seafarercode}</span>
           </p>
         </div>
       </div>

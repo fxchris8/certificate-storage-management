@@ -14,7 +14,7 @@ export class PersonRepository {
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
-        { seamancode: { contains: search, mode: 'insensitive' } },
+        { seafarercode: { contains: search, mode: 'insensitive' } },
       ];
     }
 
@@ -26,7 +26,7 @@ export class PersonRepository {
         select: {
           id: true,
           name: true,
-          seamancode: true,
+          seafarercode: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -38,40 +38,53 @@ export class PersonRepository {
     return { data, total };
   }
 
+  async findBySeafarerCode(seafarercode: string) {
+    return this.prisma.person.findFirst({
+      where: { seafarercode },
+      select: {
+        id: true,
+        name: true,
+        seafarercode: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
   async findById(id: string) {
     return this.prisma.person.findUnique({
       where: { id },
       select: {
         id: true,
         name: true,
-        seamancode: true,
+        seafarercode: true,
         createdAt: true,
         updatedAt: true,
       },
     });
   }
 
-  async create(data: { name: string; seamancode: string }) {
+  async create(data: { name: string; seafarercode: string }) {
     return this.prisma.person.create({
       data,
       select: {
         id: true,
         name: true,
-        seamancode: true,
+        seafarercode: true,
         createdAt: true,
         updatedAt: true,
       },
     });
   }
 
-  async update(id: string, data: { name?: string; seamancode?: string }) {
+  async update(id: string, data: { name?: string; seafarercode?: string }) {
     return this.prisma.person.update({
       where: { id },
       data,
       select: {
         id: true,
         name: true,
-        seamancode: true,
+        seafarercode: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -84,7 +97,7 @@ export class PersonRepository {
       select: {
         id: true,
         name: true,
-        seamancode: true,
+        seafarercode: true,
       },
     });
   }

@@ -2,17 +2,22 @@ import Cookies from "universal-cookie";
 
 const cookies = new Cookies();
 
+const COOKIE_NAME = "@cert-storage-token";
+const COOKIE_OPTIONS = {
+  path: "/",
+  maxAge: 30 * 24 * 60 * 60, // 30 hari (sama dengan JWT expiry)
+  sameSite: "lax" as const,
+};
+
 // Login
 export const getToken = (): string => {
-  const token = cookies.get("@cert-storage-token");
-  console.log("[COOKIE] Getting token:", token ? "Token exists" : "No token found");
-  return token;
+  return cookies.get(COOKIE_NAME);
 };
 
 export const setToken = (token: string) => {
-  cookies.set("@cert-storage-token", token, { path: "/" });
+  cookies.set(COOKIE_NAME, token, COOKIE_OPTIONS);
 };
 
 export const removeToken = () => {
-  cookies.remove("@cert-storage-token", { path: "/" });
+  cookies.remove(COOKIE_NAME, { path: "/" });
 };

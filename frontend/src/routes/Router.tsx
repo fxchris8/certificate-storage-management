@@ -31,7 +31,7 @@ const Router = [
         children: [
             { index: true, element: <DashboardPage /> },
             { path: "users", element: <UserDashboardPage /> },
-            { path: "certificates/:seamancode", element: <CertificatesPage /> },
+            { path: "certificates/:seafarercode", element: <CertificatesPage /> },
             { path: "external-submissions", element: <ExternalSubmissionsPage /> },
             { path: "external-submissions/:id", element: <ExternalSubmissionDetailPage /> },
         ]

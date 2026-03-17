@@ -1,9 +1,9 @@
 export interface CreatePersonInput {
   name: string;
-  seamancode: string;
+  seafarercode: string;
 }
 
 export interface UpdatePersonInput {
   name?: string;
-  seamancode?: string;
+  seafarercode?: string;
 }

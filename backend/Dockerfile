@@ -49,11 +49,11 @@ RUN chown -R nodejs:nodejs /app
 USER nodejs
 
 # Expose port
-EXPOSE 5000
+EXPOSE 5001
 
-# Health check
+# Health check (uses PORT env set by docker-compose, default 5001)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:5000/heartbeat', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+  CMD node -e "const p=process.env.PORT||5001;require('http').get('http://localhost:'+p+'/heartbeat',(r)=>{process.exit(r.statusCode===200?0:1)})"
 
 # Start the application with Prisma migration
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]

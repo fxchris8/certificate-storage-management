@@ -90,6 +90,7 @@ services:
     volumes:
       - ./ocr/samples:/app/samples
       - ./ocr/results:/app/results
+      - paddleocr_models:/root/.paddleocr
 
 networks:
   certificate-network:
@@ -98,3 +99,4 @@ networks:
 volumes:
   postgres_data:
   certificate_uploads:
+  paddleocr_models:

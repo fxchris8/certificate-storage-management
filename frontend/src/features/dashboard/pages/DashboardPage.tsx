@@ -56,7 +56,7 @@ import { Person } from "@/features/person/types/person.types"
 // Zod Schema
 const seafarerSchema = z.object({
   name: z.string().min(1, "Full Name is required"),
-  seamancode: z.string().min(1, "Seaman Code is required"),
+  seafarercode: z.string().min(1, "Seafarer Code is required"),
 })
 
 type SeafarerFormValues = z.infer<typeof seafarerSchema>
@@ -98,7 +98,7 @@ export function DashboardPage() {
     mode: "onChange",
     defaultValues: {
       name: "",
-      seamancode: "",
+      seafarercode: "",
     },
   })
   const navigate = useNavigate()
@@ -113,7 +113,7 @@ export function DashboardPage() {
     setSelectedPerson(null)
     form.reset({
       name: "",
-      seamancode: "",
+      seafarercode: "",
     })
     setIsEditOpen(true)
   }
@@ -122,7 +122,7 @@ export function DashboardPage() {
     setSelectedPerson(person)
     form.reset({
       name: person.name,
-      seamancode: person.seamancode,
+      seafarercode: person.seafarercode,
     })
     setIsEditOpen(true)
   }
@@ -138,7 +138,7 @@ export function DashboardPage() {
         id: selectedPerson.id,
         data: {
           name: data.name,
-          seamancode: data.seamancode,
+          seafarercode: data.seafarercode,
         }
       }, {
         onSuccess: () => setIsEditOpen(false)
@@ -146,7 +146,7 @@ export function DashboardPage() {
     } else {
       createPerson({
         name: data.name,
-        seamancode: data.seamancode,
+        seafarercode: data.seafarercode,
       }, {
         onSuccess: () => setIsEditOpen(false)
       })
@@ -162,7 +162,7 @@ export function DashboardPage() {
   }
 
   const handleRowClick = (person: Person) => {
-    navigate(`/dashboard/certificates/${person.seamancode}`)
+    navigate(`/dashboard/certificates/${person.seafarercode}`)
   }
 
   return (
@@ -241,7 +241,7 @@ export function DashboardPage() {
                   <TableRow className="border-b-zinc-100 dark:border-b-zinc-800 hover:bg-zinc-50/50">
                       <TableHead className="w-[80px] font-semibold">No</TableHead>
                       <TableHead className="font-semibold">Full Name</TableHead>
-                      <TableHead className="font-semibold">Seaman Code</TableHead>
+                      <TableHead className="font-semibold">Seafarer Code</TableHead>
                       <TableHead className="text-right font-semibold">Actions</TableHead>
                   </TableRow>
                   </TableHeader>
@@ -263,7 +263,7 @@ export function DashboardPage() {
                       <TableCell className="font-semibold text-zinc-900 dark:text-zinc-100">{person.name}</TableCell>
                       <TableCell>
                           <span className="inline-flex items-center rounded-md bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-600 ring-1 ring-inset ring-zinc-500/10 dark:bg-zinc-900 dark:text-zinc-400">
-                              {person.seamancode}
+                              {person.seafarercode}
                           </span>
                       </TableCell>
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
@@ -402,12 +402,12 @@ export function DashboardPage() {
               />
               <FormField
                 control={form.control}
-                name="seamancode"
+                name="seafarercode"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Seaman Code</FormLabel>
+                    <FormLabel>Seafarer Code</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter seaman code" className="h-11 bg-white border-zinc-200 transition-all" {...field} />
+                      <Input placeholder="Enter seafarer code" className="h-11 bg-white border-zinc-200 transition-all" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

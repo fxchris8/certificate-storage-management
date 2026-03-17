@@ -6,14 +6,14 @@ export class ExternalSubmissionRepository {
 
   async create(data: CreateExternalSubmissionInput): Promise<ExternalSubmission> {
     const person = await this.prisma.person.findFirst({
-      where: { seamancode: data.seamanCode },
+      where: { seafarercode: data.seafarerCode },
     });
 
     return this.prisma.externalSubmission.create({
       data: {
         externalSubmissionId: data.externalSubmissionId,
-        seamanCode: data.seamanCode,
-        seamanName: data.seamanName,
+        seafarerCode: data.seafarerCode,
+        seafarerName: data.seafarerName,
         certificateName: data.certificateName,
         nomorSertifikat: data.nomorSertifikat,
         externalFileUrl: data.externalFileUrl,
@@ -29,8 +29,8 @@ export class ExternalSubmissionRepository {
     }
     if (search) {
       where.OR = [
-        { seamanCode: { contains: search, mode: 'insensitive' } },
-        { seamanName: { contains: search, mode: 'insensitive' } },
+        { seafarerCode: { contains: search, mode: 'insensitive' } },
+        { seafarerName: { contains: search, mode: 'insensitive' } },
         { certificateName: { contains: search, mode: 'insensitive' } },
         { nomorSertifikat: { contains: search, mode: 'insensitive' } },
       ];
@@ -58,8 +58,8 @@ export class ExternalSubmissionRepository {
     }
     if (search) {
       where.OR = [
-        { seamanCode: { contains: search, mode: 'insensitive' } },
-        { seamanName: { contains: search, mode: 'insensitive' } },
+        { seafarerCode: { contains: search, mode: 'insensitive' } },
+        { seafarerName: { contains: search, mode: 'insensitive' } },
         { certificateName: { contains: search, mode: 'insensitive' } },
         { nomorSertifikat: { contains: search, mode: 'insensitive' } },
       ];
@@ -83,7 +83,8 @@ export class ExternalSubmissionRepository {
     id: string,
     status: string,
     reviewNotes: string,
-    reviewedBy: string
+    reviewedBy: string,
+    personId?: string
   ): Promise<ExternalSubmission> {
     return this.prisma.externalSubmission.update({
       where: { id },
@@ -92,6 +93,7 @@ export class ExternalSubmissionRepository {
         reviewNotes,
         reviewedBy,
         reviewedAt: new Date(),
+        ...(personId && { personId }),
       },
     });
   }

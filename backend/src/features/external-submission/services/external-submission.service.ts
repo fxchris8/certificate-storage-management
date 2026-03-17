@@ -1,13 +1,15 @@
 import { unifiedResponse } from 'uni-response';
 import { ExternalSubmissionRepository } from '../repositories/external-submission.repository.js';
 import { CertificateRepository } from '../../certificate/repositories/certificate.repository.js';
+import { PersonRepository } from '../../person/repositories/person.repository.js';
 import { CreateExternalSubmissionInput, ReviewSubmissionInput } from '../types/external-submission.types.js';
 import { SUCCESS, ERROR } from '../../../constants/messages.js';
 
 export class ExternalSubmissionService {
   constructor(
     private externalSubmissionRepository: ExternalSubmissionRepository,
-    private certificateRepository: CertificateRepository
+    private certificateRepository: CertificateRepository,
+    private personRepository: PersonRepository
   ) {}
 
   async createSubmission(data: CreateExternalSubmissionInput, file: Express.Multer.File) {
@@ -71,21 +73,35 @@ export class ExternalSubmissionService {
         return unifiedResponse(false, ERROR.INVALID_SUBMISSION_STATUS);
       }
 
+      // Find or create person by seafarerCode
+      let personId: string = submission.personId ?? '';
+      if (!personId) {
+        const existing = await this.personRepository.findBySeafarerCode(submission.seafarerCode);
+        if (existing) {
+          personId = existing.id;
+        } else {
+          const newPerson = await this.personRepository.create({
+            name: submission.seafarerName,
+            seafarercode: submission.seafarerCode,
+          });
+          personId = newPerson.id;
+        }
+      }
+
       const updated = await this.externalSubmissionRepository.updateStatus(
         id,
         'APPROVED',
         data.reviewNotes,
-        userId
+        userId,
+        personId
       );
 
-      if (submission.personId) {
-        await this.certificateRepository.create({
-          personId: submission.personId,
-          certificateName: submission.certificateName,
-          nomorSertifikat: submission.nomorSertifikat,
-          fileUrl: submission.externalFileUrl,
-        });
-      }
+      await this.certificateRepository.create({
+        personId,
+        certificateName: submission.certificateName,
+        nomorSertifikat: submission.nomorSertifikat,
+        fileUrl: submission.externalFileUrl,
+      });
 
       return unifiedResponse(true, SUCCESS.EXTERNAL_SUBMISSION_APPROVED, updated);
     } catch (error) {

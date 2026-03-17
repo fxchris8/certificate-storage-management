@@ -126,8 +126,8 @@ export function ExternalSubmissionsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Seaman Code</TableHead>
-                  <TableHead>Seaman Name</TableHead>
+                  <TableHead>Seafarer Code</TableHead>
+                  <TableHead>Seafarer Name</TableHead>
                   <TableHead>Certificate Name</TableHead>
                   <TableHead>Nomor Sertifikat</TableHead>
                   <TableHead>Status</TableHead>
@@ -138,8 +138,8 @@ export function ExternalSubmissionsPage() {
               <TableBody>
                 {submissions.map((submission) => (
                   <TableRow key={submission.id}>
-                    <TableCell className="font-medium">{submission.seamanCode}</TableCell>
-                    <TableCell>{submission.seamanName}</TableCell>
+                    <TableCell className="font-medium">{submission.seafarerCode}</TableCell>
+                    <TableCell>{submission.seafarerName}</TableCell>
                     <TableCell>{submission.certificateName}</TableCell>
                     <TableCell>{submission.nomorSertifikat}</TableCell>
                     <TableCell>

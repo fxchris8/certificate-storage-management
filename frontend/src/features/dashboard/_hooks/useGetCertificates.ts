@@ -20,14 +20,14 @@ export interface UseGetCertificatesParams {
   search?: string;
 }
 
-export function useGetCertificates(seamanCode: string | undefined, params?: UseGetCertificatesParams) {
+export function useGetCertificates(seafarerCode: string | undefined, params?: UseGetCertificatesParams) {
   const { page = 1, limit = 10, search = "" } = params || {};
 
   return useQuery({
-    queryKey: ["certificates", seamanCode, page, limit, search],
+    queryKey: ["certificates", seafarerCode, page, limit, search],
     queryFn: async (): Promise<CertificatePaginatedResponse> => {
       const response = await api.get<{ success: boolean; data: CertificatePaginatedResponse }>(
-        `/certificates/person/${seamanCode}`,
+        `/certificates/person/${seafarerCode}`,
         {
           params: {
             page,
@@ -38,6 +38,6 @@ export function useGetCertificates(seamanCode: string | undefined, params?: UseG
       );
       return response.data.data;
     },
-    enabled: !!seamanCode,
+    enabled: !!seafarerCode,
   });
 }

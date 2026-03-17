@@ -11,14 +11,14 @@ export class CertificateController {
     this.certificateService = certificateService;
   }
 
-  getCertificatesBySeamanCode = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  getCertificatesBySeafarerCode = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { seamanCode } = req.params;
+      const { seafarerCode } = req.params;
       const page = req.query.page ? parseInt(req.query.page as string) : 1;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
       const search = req.query.search as string | undefined;
 
-      const result = await this.certificateService.getCertificatesBySeamanCode(seamanCode, { page, limit, search });
+      const result = await this.certificateService.getCertificatesBySeafarerCode(seafarerCode, { page, limit, search });
       res.status(result.success ? 200 : 404).json(result);
     } catch (error) {
       next(error);
@@ -96,8 +96,8 @@ export class CertificateController {
 
   viewCertificateFile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { seamanCode, nomorSertifikat } = req.params;
-      const result = await this.certificateService.viewCertificateFile(seamanCode, nomorSertifikat);
+      const { seafarerCode, nomorSertifikat } = req.params;
+      const result = await this.certificateService.viewCertificateFile(seafarerCode, nomorSertifikat);
 
       if (!result.success) {
         res.status(404).json({ success: false, message: result.message });
@@ -154,8 +154,8 @@ export class CertificateController {
 
   downloadCertificateFile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { seamanCode, nomorSertifikat } = req.params;
-      const result = await this.certificateService.downloadCertificateFile(seamanCode, nomorSertifikat);
+      const { seafarerCode, nomorSertifikat } = req.params;
+      const result = await this.certificateService.downloadCertificateFile(seafarerCode, nomorSertifikat);
 
       if (!result.success) {
         res.status(404).json({ success: false, message: result.message });

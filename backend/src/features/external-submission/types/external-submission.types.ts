@@ -1,7 +1,7 @@
 export interface CreateExternalSubmissionInput {
   externalSubmissionId: string;
-  seamanCode: string;
-  seamanName: string;
+  seafarerCode: string;
+  seafarerName: string;
   certificateName: string;
   nomorSertifikat: string;
   externalFileUrl: string;
@@ -14,8 +14,8 @@ export interface ReviewSubmissionInput {
 export interface ExternalSubmissionResponse {
   id: string;
   externalSubmissionId: string;
-  seamanCode: string;
-  seamanName: string;
+  seafarerCode: string;
+  seafarerName: string;
   certificateName: string;
   nomorSertifikat: string;
   externalFileUrl: string;
