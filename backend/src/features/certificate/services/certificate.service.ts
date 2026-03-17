@@ -8,6 +8,8 @@ import { SUCCESS, ERROR } from '../../../constants/messages';
 import { CertificateRepository } from '../repositories/certificate.repository';
 import { CreateCertificateInput, UpdateCertificateInput, OcrScanResult, BulkCreateItem } from '../types/certificate.types';
 
+const OCR_REQUEST_TIMEOUT_MS = 2 * 60 * 1000;
+
 export class CertificateService {
   constructor(private readonly certificateRepository: CertificateRepository) {}
 
@@ -121,11 +123,19 @@ export class CertificateService {
         const blob = new Blob([fileBuffer as unknown as BlobPart], { type: file.mimetype });
         const formData = new FormData();
         formData.append('image', blob, file.originalname);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), OCR_REQUEST_TIMEOUT_MS);
+        let response: globalThis.Response;
 
-        const response = await fetch(ocrUrl, {
-          method: 'POST',
-          body: formData,
-        });
+        try {
+          response = await fetch(ocrUrl, {
+            method: 'POST',
+            body: formData,
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timeout);
+        }
 
         if (!response.ok) {
           const errorText = await response.text();
@@ -174,6 +184,7 @@ export class CertificateService {
           });
         }
       } catch (error) {
+        console.error(`OCR scan failed for ${file.originalname}:`, error);
         results.push({
           originalName: file.originalname,
           filePath: '',

@@ -14,7 +14,7 @@ export class PersonRepository {
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
-        { seafarercode: { contains: search, mode: 'insensitive' } },
+        { seamancode: { contains: search, mode: 'insensitive' } },
       ];
     }
 
@@ -26,7 +26,7 @@ export class PersonRepository {
         select: {
           id: true,
           name: true,
-          seafarercode: true,
+          seamancode: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -35,71 +35,128 @@ export class PersonRepository {
       this.prisma.person.count({ where }),
     ]);
 
-    return { data, total };
+    return {
+      data: data.map((person) => ({
+        id: person.id,
+        name: person.name,
+        seafarercode: person.seamancode,
+        createdAt: person.createdAt,
+        updatedAt: person.updatedAt,
+      })),
+      total,
+    };
   }
 
   async findBySeafarerCode(seafarercode: string) {
-    return this.prisma.person.findFirst({
-      where: { seafarercode },
+    const person = await this.prisma.person.findFirst({
+      where: { seamancode: seafarercode },
       select: {
         id: true,
         name: true,
-        seafarercode: true,
+        seamancode: true,
         createdAt: true,
         updatedAt: true,
       },
     });
+
+    if (!person) return null;
+
+    return {
+      id: person.id,
+      name: person.name,
+      seafarercode: person.seamancode,
+      createdAt: person.createdAt,
+      updatedAt: person.updatedAt,
+    };
   }
 
   async findById(id: string) {
-    return this.prisma.person.findUnique({
+    const person = await this.prisma.person.findUnique({
       where: { id },
       select: {
         id: true,
         name: true,
-        seafarercode: true,
+        seamancode: true,
         createdAt: true,
         updatedAt: true,
       },
     });
+
+    if (!person) return null;
+
+    return {
+      id: person.id,
+      name: person.name,
+      seafarercode: person.seamancode,
+      createdAt: person.createdAt,
+      updatedAt: person.updatedAt,
+    };
   }
 
   async create(data: { name: string; seafarercode: string }) {
-    return this.prisma.person.create({
-      data,
+    const person = await this.prisma.person.create({
+      data: {
+        name: data.name,
+        seamancode: data.seafarercode,
+      },
       select: {
         id: true,
         name: true,
-        seafarercode: true,
+        seamancode: true,
         createdAt: true,
         updatedAt: true,
       },
     });
+
+    return {
+      id: person.id,
+      name: person.name,
+      seafarercode: person.seamancode,
+      createdAt: person.createdAt,
+      updatedAt: person.updatedAt,
+    };
   }
 
   async update(id: string, data: { name?: string; seafarercode?: string }) {
-    return this.prisma.person.update({
+    const person = await this.prisma.person.update({
       where: { id },
-      data,
+      data: {
+        ...(data.name !== undefined ? { name: data.name } : {}),
+        ...(data.seafarercode !== undefined ? { seamancode: data.seafarercode } : {}),
+      },
       select: {
         id: true,
         name: true,
-        seafarercode: true,
+        seamancode: true,
         createdAt: true,
         updatedAt: true,
       },
     });
+
+    return {
+      id: person.id,
+      name: person.name,
+      seafarercode: person.seamancode,
+      createdAt: person.createdAt,
+      updatedAt: person.updatedAt,
+    };
   }
 
   async delete(id: string) {
-    return this.prisma.person.delete({
+    const person = await this.prisma.person.delete({
       where: { id },
       select: {
         id: true,
         name: true,
-        seafarercode: true,
+        seamancode: true,
       },
     });
+
+    return {
+      id: person.id,
+      name: person.name,
+      seafarercode: person.seamancode,
+    };
   }
 
   async getStats() {

@@ -2,6 +2,9 @@ import { app } from './app';
 import { env } from './config/env-config';
 import { PrismaService } from './config/prisma.config';
 
+const SERVER_REQUEST_TIMEOUT_MS = 15 * 60 * 1000;
+const SERVER_HEADERS_TIMEOUT_MS = SERVER_REQUEST_TIMEOUT_MS + 5 * 1000;
+
 class Server {
   private readonly port: number | string;
   private serverInstance: any; // Holds the server instance
@@ -18,6 +21,9 @@ class Server {
     this.serverInstance = app.listen(this.port, () => {
       console.log(`Server running at http://localhost:${this.port}`);
     });
+    this.serverInstance.requestTimeout = SERVER_REQUEST_TIMEOUT_MS;
+    this.serverInstance.headersTimeout = SERVER_HEADERS_TIMEOUT_MS;
+    this.serverInstance.timeout = SERVER_REQUEST_TIMEOUT_MS;
 
     // Handle system signals for graceful shutdown
     process.on('SIGTERM', this.gracefulShutdown.bind(this));

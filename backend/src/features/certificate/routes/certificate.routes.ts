@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { NextFunction, Request, Response, Router } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs-extra';
@@ -68,6 +68,17 @@ const certificateService = new CertificateService(certificateRepository);
 const certificateController = new CertificateController(certificateService);
 
 const router = Router();
+const SCAN_ROUTE_TIMEOUT_MS = 10 * 60 * 1000;
+
+const extendRequestTimeout = (timeoutMs: number) => (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  req.socket.setTimeout(timeoutMs);
+  res.socket?.setTimeout(timeoutMs);
+  next();
+};
 
 // All routes are protected
 router.get('/person/:seafarerCode', auth, certificateController.getCertificatesBySeafarerCode);
@@ -75,7 +86,13 @@ router.get('/view/:seafarerCode/:nomorSertifikat', certificateController.viewCer
 router.get('/download/:seafarerCode/:nomorSertifikat', auth, certificateController.downloadCertificateFile);
 router.get('/:id', auth, certificateController.getCertificateById);
 router.post('/', auth, uploadDisk.single('file'), certificateController.createCertificate);
-router.post('/scan', auth, uploadMemory.array('files', 20), certificateController.scanCertificates);
+router.post(
+  '/scan',
+  auth,
+  extendRequestTimeout(SCAN_ROUTE_TIMEOUT_MS),
+  uploadMemory.array('files', 20),
+  certificateController.scanCertificates,
+);
 router.post('/bulk', auth, certificateController.bulkCreateCertificates);
 router.put('/:id', auth, uploadDisk.single('file'), certificateController.updateCertificate);
 router.delete('/:id', auth, certificateController.deleteCertificate);

@@ -44,7 +44,7 @@ services:
       SSO_CLIENT_SECRET: ${SSO_CLIENT_SECRET}
       SSO_CALLBACK_URL: ${SSO_CALLBACK_URL:-http://localhost:5001/api/auth/sso/callback}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5176}
-      EXTERNAL_API_KEY: ${EXTERNAL_API_KEY:-}
+      EXTERNAL_API_KEY: ${EXTERNAL_API_KEY:-spileeedsd}
     ports:
       - "${BACKEND_PORT:-5000}:5001"
     depends_on:

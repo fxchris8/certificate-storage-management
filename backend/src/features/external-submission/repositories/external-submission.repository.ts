@@ -6,7 +6,7 @@ export class ExternalSubmissionRepository {
 
   async create(data: CreateExternalSubmissionInput): Promise<ExternalSubmission> {
     const person = await this.prisma.person.findFirst({
-      where: { seafarercode: data.seafarerCode },
+      where: { seamancode: data.seafarerCode },
     });
 
     return this.prisma.externalSubmission.create({
