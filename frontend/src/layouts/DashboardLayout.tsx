@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Outlet } from "react-router-dom"
 import { Sidebar } from "../features/dashboard/components/Sidebar"
-import { Bell, Search, Menu } from "lucide-react"
+import { Menu } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 import { useGetMe } from "@/features/auth/_hooks/useGetMe"

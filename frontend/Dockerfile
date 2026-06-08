@@ -16,6 +16,10 @@ COPY . .
 ARG VITE_API_URL=http://localhost:5000
 ENV VITE_API_URL=$VITE_API_URL
 
+# Build argument for serving the app behind a reverse-proxy path prefix
+ARG VITE_BASE_PATH=/
+ENV VITE_BASE_PATH=$VITE_BASE_PATH
+
 # Build the application
 RUN npm run build
 
@@ -52,7 +56,7 @@ EXPOSE 80
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1/ || exit 1
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]

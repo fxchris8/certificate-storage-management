@@ -32,7 +32,10 @@ export class UserService {
     }
 
     const token = generateToken(user.id, 'user');
-    return unifiedResponse(true, SUCCESS.LOGIN_SUCCESSFUL, { token, user: { id: user.id, username: user.username } });
+    return unifiedResponse(true, SUCCESS.LOGIN_SUCCESSFUL, {
+      token,
+      user: { id: user.id, username: user.username },
+    });
   }
 
   async register(registerInputObj: RegisterInputTypes) {

@@ -13,4 +13,3 @@ export interface UpdateUserInputTypes {
   username?: string;
   password?: string;
 }
-

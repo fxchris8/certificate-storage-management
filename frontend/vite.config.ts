@@ -5,6 +5,7 @@ import path from 'path'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  base: process.env.VITE_BASE_PATH || '/',
   server: {
     host: true, // Listen on all addresses, including LAN and public addresses
     port: 5173,

@@ -63,4 +63,3 @@ const authService = new AuthService(secret);
 
 // Export methods for use in routes
 export const auth = authService.auth.bind(authService);
-

@@ -11,7 +11,7 @@ import eslintConfigPrettier from 'eslint-config-prettier';
 export default [
   // Ignore patterns
   {
-    ignores: ['dist', 'node_modules', 'prisma'],
+    ignores: ['dist', 'node_modules', 'prisma', 'src/**/__tests__/**'],
   },
   // Base config for TypeScript files
   {

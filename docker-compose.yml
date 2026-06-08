@@ -1,80 +1,113 @@
-version: '3.8'
-
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:16-alpine
-    container_name: certificate-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-certificate_db}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - certificate-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  # postgres:
+  #   image: postgres:16-alpine
+  #   container_name: certificate_storage_management_db_prod
+  #   restart: always
+  #   environment:
+  #     POSTGRES_USER: ${POSTGRES_USER:-postgres}
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+  #     POSTGRES_DB: ${POSTGRES_DB:-certificate_db}
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   networks:
+  #     - certificate-network
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
 
-  # Backend API
   backend:
+    container_name: certificate_storage_management_backend_prod
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: certificate-backend
-    restart: unless-stopped
+    env_file: .env
+    restart: always
     environment:
       NODE_ENV: ${NODE_ENV:-production}
-      PORT: ${BACKEND_PORT:-5000}
+      PORT: 5000
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-certificate_db}
       SHADOW_DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-certificate_db}_shadow
       JWT_SECRET: ${JWT_SECRET}
-      WHITE_LIST_URLS: ${WHITE_LIST_URLS:-http://localhost:3000,http://localhost:5173}
-    ports:
-      - "${BACKEND_PORT:-5000}:5000"
-      - "5555:5555"
+      WHITE_LIST_URLS: ${WHITE_LIST_URLS:-https://pe.spil.co.id,http://localhost:3000,http://localhost:5173}
+      GDRIVE_CLIENT_EMAIL: ${GDRIVE_CLIENT_EMAIL}
+      GDRIVE_PRIVATE_KEY: ${GDRIVE_PRIVATE_KEY}
+      GDRIVE_FOLDER_ID: ${GDRIVE_FOLDER_ID}
     depends_on:
       postgres:
         condition: service_healthy
+    expose:
+      - "5000"
     networks:
       - certificate-network
-    volumes:
-      - ./backend/prisma:/app/prisma
+      - traefik-net
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:5000/heartbeat', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-net"
+      - "traefik.http.routers.certificate-storage-management-backend.rule=Host(`${TRAEFIK_HOST:-pe.spil.co.id}`) && PathPrefix(`${BACKEND_PATH_PREFIX:-/certificate-storage-management-api}`)"
+      - "traefik.http.routers.certificate-storage-management-backend.entrypoints=websecure"
+      - "traefik.http.routers.certificate-storage-management-backend.tls=true"
+      - "traefik.http.routers.certificate-storage-management-backend.priority=200"
+      - "traefik.http.routers.certificate-storage-management-backend.middlewares=strip-certificate-storage-management-api"
+      - "traefik.http.middlewares.strip-certificate-storage-management-api.stripprefix.prefixes=${BACKEND_PATH_PREFIX:-/certificate-storage-management-api}"
+      - "traefik.http.services.certificate-storage-management-backend.loadbalancer.server.port=5000"
 
-  # Frontend
   frontend:
+    container_name: certificate_storage_management_frontend_prod
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:5000}
-    container_name: certificate-frontend
-    restart: unless-stopped
-    ports:
-      - "${FRONTEND_PROD_PORT:-3000}:80"
+        VITE_API_URL: ${VITE_API_URL:-https://pe.spil.co.id/certificate-storage-management-api}
+        VITE_BASE_PATH: ${VITE_BASE_PATH:-/certificate-storage-management/}
+    env_file: .env
+    restart: always
+    environment:
+      NODE_ENV: production
+      VITE_API_URL: ${VITE_API_URL:-https://pe.spil.co.id/certificate-storage-management-api}
+      VITE_BASE_PATH: ${VITE_BASE_PATH:-/certificate-storage-management/}
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    expose:
+      - "80"
     networks:
-      - certificate-network
+      - traefik-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-net"
+      - "traefik.http.routers.certificate-storage-management-frontend.rule=Host(`${TRAEFIK_HOST:-pe.spil.co.id}`) && PathPrefix(`${FRONTEND_PATH_PREFIX:-/certificate-storage-management}`)"
+      - "traefik.http.routers.certificate-storage-management-frontend.entrypoints=websecure"
+      - "traefik.http.routers.certificate-storage-management-frontend.tls=true"
+      - "traefik.http.routers.certificate-storage-management-frontend.priority=100"
+      - "traefik.http.routers.certificate-storage-management-frontend.middlewares=strip-certificate-storage-management"
+      - "traefik.http.middlewares.strip-certificate-storage-management.stripprefix.prefixes=${FRONTEND_PATH_PREFIX:-/certificate-storage-management}"
+      - "traefik.http.services.certificate-storage-management-frontend.loadbalancer.server.port=80"
 
-  # OCR Service
   ocr:
+    container_name: certificate_storage_management_ocr_prod
     build:
       context: ./ocr
       dockerfile: Dockerfile
-    container_name: certificate-ocr
-    restart: unless-stopped
+    restart: always
     environment:
       PYTHONUNBUFFERED: 1
-    ports:
-      - "${OCR_PORT:-8000}:8000"
+    expose:
+      - "8000"
     networks:
       - certificate-network
     volumes:
@@ -84,6 +117,9 @@ services:
 networks:
   certificate-network:
     driver: bridge
+  traefik-net:
+    name: traefik-net
+    external: true
 
 volumes:
   postgres_data:

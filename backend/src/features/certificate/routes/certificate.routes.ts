@@ -1,7 +1,7 @@
 import { Router } from 'express';
+import fs from 'fs-extra';
 import multer from 'multer';
 import path from 'path';
-import fs from 'fs-extra';
 
 import { PrismaService } from '../../../config/prisma.config';
 import { auth } from '../../../middleware/auth.middleware';
@@ -53,10 +53,19 @@ const router = Router();
 // All routes are protected
 router.get('/person/:seamanCode', auth, certificateController.getCertificatesBySeamanCode);
 router.get('/view/:seamanCode/:nomorSertifikat', auth, certificateController.viewCertificateFile);
-router.get('/download/:seamanCode/:nomorSertifikat', auth, certificateController.downloadCertificateFile);
+router.get(
+  '/download/:seamanCode/:nomorSertifikat',
+  auth,
+  certificateController.downloadCertificateFile,
+);
 router.get('/:id', auth, certificateController.getCertificateById);
 router.post('/', auth, upload.single('file'), certificateController.createCertificate);
-router.put('/:id', auth, validateRequest(updateCertificateSchema), certificateController.updateCertificate);
+router.put(
+  '/:id',
+  auth,
+  validateRequest(updateCertificateSchema),
+  certificateController.updateCertificate,
+);
 router.delete('/:id', auth, certificateController.deleteCertificate);
 
 export default router;

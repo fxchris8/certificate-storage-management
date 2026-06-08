@@ -27,14 +27,13 @@ const passwordSchema = z
   });
 
 // Register schema
-export const registerSchema = z
-  .object({
-    username: z
-      .string()
-      .min(3, { message: 'Username must be at least 3 characters long' })
-      .nonempty({ message: 'Username is required' }),
-    password: passwordSchema,
-  });
+export const registerSchema = z.object({
+  username: z
+    .string()
+    .min(3, { message: 'Username must be at least 3 characters long' })
+    .nonempty({ message: 'Username is required' }),
+  password: passwordSchema,
+});
 
 // Login schema
 export const loginSchema = z.object({

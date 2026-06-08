@@ -1,6 +1,9 @@
 import { NextFunction, Request, Response } from 'express';
+import fs from 'fs-extra';
 import path from 'path';
 
+import { env } from '../../../config/env-config';
+import { downloadFileFromDrive, uploadFileToDrive } from '../../../lib/google-drive';
 import { CertificateService } from '../services/certificate.service';
 import { CreateCertificateInput, UpdateCertificateInput } from '../types/certificate.types';
 
@@ -11,7 +14,11 @@ export class CertificateController {
     this.certificateService = certificateService;
   }
 
-  getCertificatesBySeamanCode = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  getCertificatesBySeamanCode = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const { seamanCode } = req.params;
       const result = await this.certificateService.getCertificatesBySeamanCode(seamanCode);
@@ -31,11 +38,7 @@ export class CertificateController {
     }
   };
 
-  createCertificate = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
+  createCertificate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const file = req.file;
       if (!file) {
@@ -44,13 +47,20 @@ export class CertificateController {
       }
 
       const { personId, certificateName, nomorSertifikat } = req.body;
-      const fileUrl = file.path;
+      const driveFile = await uploadFileToDrive(
+        file.path,
+        file.originalname,
+        file.mimetype,
+        env.GDRIVE_FOLDER_ID,
+      );
+
+      await fs.remove(file.path);
 
       const data: CreateCertificateInput = {
         personId,
         certificateName,
         nomorSertifikat,
-        fileUrl,
+        fileUrl: driveFile.id,
       };
 
       const result = await this.certificateService.createCertificate(data);
@@ -74,7 +84,11 @@ export class CertificateController {
     }
   };
 
-  deleteCertificate = async (req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> => {
+  deleteCertificate = async (
+    req: Request<{ id: string }>,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const { id } = req.params;
       const result = await this.certificateService.deleteCertificate(id);
@@ -94,24 +108,49 @@ export class CertificateController {
         return;
       }
 
-      res.sendFile(result.filePath!);
+      if ('driveFileId' in result) {
+        const stream = await downloadFileFromDrive(result.driveFileId);
+        res.setHeader('Content-Type', result.mimeType || 'application/octet-stream');
+        stream.pipe(res);
+        return;
+      }
+
+      res.sendFile(result.filePath);
     } catch (error) {
       next(error);
     }
   };
 
-  downloadCertificateFile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  downloadCertificateFile = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const { seamanCode, nomorSertifikat } = req.params;
-      const result = await this.certificateService.downloadCertificateFile(seamanCode, nomorSertifikat);
+      const result = await this.certificateService.downloadCertificateFile(
+        seamanCode,
+        nomorSertifikat,
+      );
 
       if (!result.success) {
         res.status(404).json({ success: false, message: result.message });
         return;
       }
 
-      const fileName = path.basename(result.filePath!);
-      res.download(result.filePath!, fileName);
+      if ('driveFileId' in result) {
+        const stream = await downloadFileFromDrive(result.driveFileId);
+        res.setHeader('Content-Type', result.mimeType || 'application/octet-stream');
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename="${result.driveFileName || 'download'}"`,
+        );
+        stream.pipe(res);
+        return;
+      }
+
+      const fileName = path.basename(result.filePath);
+      res.download(result.filePath, fileName);
     } catch (error) {
       next(error);
     }

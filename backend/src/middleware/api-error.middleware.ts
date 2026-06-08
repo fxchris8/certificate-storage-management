@@ -1,4 +1,10 @@
-import { Prisma } from '@prisma/client';
+import {
+  PrismaClientInitializationError,
+  PrismaClientKnownRequestError,
+  PrismaClientRustPanicError,
+  PrismaClientUnknownRequestError,
+  PrismaClientValidationError,
+} from '@prisma/client/runtime/library';
 import { ErrorRequestHandler, NextFunction, Request, Response } from 'express';
 import { unifiedResponse } from 'uni-response';
 
@@ -37,13 +43,7 @@ const checkContentTypeAsURLEncodedFormData = (
 };
 
 // Middleware to check host whitelist
-const apiErrorHandler = (
-  err: ErrorRequestHandler,
-  req: Request,
-  res: Response,
-
-  next: NextFunction,
-): void => {
+const apiErrorHandler: ErrorRequestHandler = (err, req, res, next): void => {
   if (environment === 'development') {
     console.log('err', err);
   }
@@ -57,7 +57,7 @@ const apiErrorHandler = (
     res.status(400).json(unifiedResponse(false, 'Invalid JSON'));
     return;
   }
-  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+  if (err instanceof PrismaClientKnownRequestError) {
     // Handle Prisma validation errors
     if (err.meta) {
       const firstKey = Object.keys(err?.meta)[0];
@@ -66,23 +66,19 @@ const apiErrorHandler = (
       return;
     }
   }
-  if (err instanceof Prisma.PrismaClientUnknownRequestError) {
+  if (err instanceof PrismaClientUnknownRequestError) {
     res.status(400).json(unifiedResponse(false, err?.message));
     return;
   }
-  if (err instanceof Prisma.PrismaClientRustPanicError) {
+  if (err instanceof PrismaClientRustPanicError) {
     res.status(400).json(unifiedResponse(false, err?.message));
     return;
   }
-  if (err instanceof Prisma.PrismaClientRustPanicError) {
+  if (err instanceof PrismaClientInitializationError) {
     res.status(400).json(unifiedResponse(false, err?.message));
     return;
   }
-  if (err instanceof Prisma.PrismaClientInitializationError) {
-    res.status(400).json(unifiedResponse(false, err?.message));
-    return;
-  }
-  if (err instanceof Prisma.PrismaClientValidationError) {
+  if (err instanceof PrismaClientValidationError) {
     res.status(400).json(unifiedResponse(false, err?.message));
     return;
   }

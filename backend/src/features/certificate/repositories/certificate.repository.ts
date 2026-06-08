@@ -55,7 +55,12 @@ export class CertificateRepository {
     });
   }
 
-  async create(data: { personId: string; certificateName: string; nomorSertifikat: string; fileUrl: string }) {
+  async create(data: {
+    personId: string;
+    certificateName: string;
+    nomorSertifikat: string;
+    fileUrl: string;
+  }) {
     return this.prisma.certificate.create({
       data,
       select: {
@@ -69,7 +74,10 @@ export class CertificateRepository {
     });
   }
 
-  async update(id: string, data: { certificateName?: string; nomorSertifikat?: string; fileUrl?: string }) {
+  async update(
+    id: string,
+    data: { certificateName?: string; nomorSertifikat?: string; fileUrl?: string },
+  ) {
     return this.prisma.certificate.update({
       where: { id },
       data,

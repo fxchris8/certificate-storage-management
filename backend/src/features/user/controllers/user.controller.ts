@@ -95,7 +95,11 @@ export class UserController {
     }
   };
 
-  deleteUser = async (req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> => {
+  deleteUser = async (
+    req: Request<{ id: string }>,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const { id } = req.params;
       const result = await this.userService.deleteUser(id);

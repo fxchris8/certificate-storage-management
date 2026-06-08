@@ -37,6 +37,8 @@ const Router = [
   },
 ];
 
-const router = createBrowserRouter(Router);
+const baseUrl = import.meta.env.BASE_URL;
+const basename = baseUrl === "/" ? undefined : baseUrl.replace(/\/$/, "");
+const router = createBrowserRouter(Router, { basename });
 
 export default router;

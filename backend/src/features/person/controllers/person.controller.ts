@@ -56,7 +56,11 @@ export class PersonController {
     }
   };
 
-  deletePerson = async (req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> => {
+  deletePerson = async (
+    req: Request<{ id: string }>,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const { id } = req.params;
       const result = await this.personService.deletePerson(id);

@@ -1,10 +1,12 @@
 // src/middleware/pino-logger.ts
+import { randomUUID } from 'crypto';
+import { NextFunction, Request, Response } from 'express';
+import { ensureDir } from 'fs-extra'; // Optional: to ensure log directory exists
+import { join } from 'path';
 import pino, { Logger } from 'pino';
 import pinoHttp from 'pino-http';
-import { Request, Response, NextFunction } from 'express';
-import { join } from 'path';
-import { ensureDir } from 'fs-extra'; // Optional: to ensure log directory exists
-import { randomUUID } from 'crypto';
+
+import { env } from '../config/env-config';
 
 // Extend Express Request interface to include logger
 declare global {
@@ -30,7 +32,7 @@ const logFile = join(logDir, 'app.log');
 
 // Production: Write to file, Development: Pretty print
 const transport =
-  process.env.NODE_ENV === 'development'
+  env.NODE_ENV === 'development'
     ? {
         target: 'pino-pretty',
         options: {
@@ -45,7 +47,7 @@ const transport =
       };
 
 const logger = pino({
-  level: process.env.LOG_LEVEL || 'info', // Default to 'info' if not set
+  level: env.LOG_LEVEL || 'info', // Default to 'info' if not set
   transport,
 });
 

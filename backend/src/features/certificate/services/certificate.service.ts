@@ -1,10 +1,31 @@
-import path from 'path';
 import fs from 'fs-extra';
+import path from 'path';
 import { unifiedResponse } from 'uni-response';
 
-import { SUCCESS, ERROR } from '../../../constants/messages';
+import { ERROR, SUCCESS } from '../../../constants/messages';
+import { deleteFileFromDrive, getDriveFileMetadata } from '../../../lib/google-drive';
 import { CertificateRepository } from '../repositories/certificate.repository';
 import { CreateCertificateInput, UpdateCertificateInput } from '../types/certificate.types';
+
+type CertificateFile = {
+  id: string;
+  personId: string;
+  certificateName: string;
+  nomorSertifikat: string;
+  fileUrl: string;
+  uploadedAt: Date;
+};
+
+type CertificateFileResult =
+  | { success: false; message: string }
+  | {
+      success: true;
+      certificate: CertificateFile;
+      driveFileId: string;
+      driveFileName?: string;
+      mimeType?: string;
+    }
+  | { success: true; certificate: CertificateFile; filePath: string };
 
 export class CertificateService {
   constructor(private readonly certificateRepository: CertificateRepository) {}
@@ -46,6 +67,10 @@ export class CertificateService {
     }
   }
 
+  private isDriveFile(fileUrl: string): boolean {
+    return fileUrl !== '' && !fileUrl.includes(path.sep) && !path.isAbsolute(fileUrl);
+  }
+
   async deleteCertificate(id: string) {
     const existing = await this.certificateRepository.findById(id);
     if (!existing) {
@@ -53,11 +78,14 @@ export class CertificateService {
     }
 
     try {
-      // Delete the file from disk if it exists
       if (existing.fileUrl) {
-        const filePath = path.resolve(existing.fileUrl);
-        if (await fs.pathExists(filePath)) {
-          await fs.remove(filePath);
+        if (this.isDriveFile(existing.fileUrl)) {
+          await deleteFileFromDrive(existing.fileUrl);
+        } else {
+          const filePath = path.resolve(existing.fileUrl);
+          if (await fs.pathExists(filePath)) {
+            await fs.remove(filePath);
+          }
         }
       }
 
@@ -68,10 +96,27 @@ export class CertificateService {
     }
   }
 
-  async viewCertificateFile(seamanCode: string, nomorSertifikat: string) {
-    const certificate = await this.certificateRepository.findBySeamanCodeAndNomor(seamanCode, nomorSertifikat);
+  async viewCertificateFile(
+    seamanCode: string,
+    nomorSertifikat: string,
+  ): Promise<CertificateFileResult> {
+    const certificate = await this.certificateRepository.findBySeamanCodeAndNomor(
+      seamanCode,
+      nomorSertifikat,
+    );
     if (!certificate) {
       return { success: false, message: ERROR.CERTIFICATE_NOT_FOUND };
+    }
+
+    if (this.isDriveFile(certificate.fileUrl)) {
+      const metadata = await getDriveFileMetadata(certificate.fileUrl);
+      return {
+        success: true,
+        certificate,
+        driveFileId: certificate.fileUrl,
+        driveFileName: metadata.name ?? undefined,
+        mimeType: metadata.mimeType ?? undefined,
+      };
     }
 
     const filePath = path.resolve(certificate.fileUrl);
@@ -83,7 +128,15 @@ export class CertificateService {
     return { success: true, filePath, certificate };
   }
 
-  async downloadCertificateFile(seamanCode: string, nomorSertifikat: string) {
-    return this.viewCertificateFile(seamanCode, nomorSertifikat);
+  async downloadCertificateFile(
+    seamanCode: string,
+    nomorSertifikat: string,
+  ): Promise<CertificateFileResult> {
+    const result = await this.viewCertificateFile(seamanCode, nomorSertifikat);
+    if (!result.success) {
+      return result;
+    }
+
+    return result;
   }
 }

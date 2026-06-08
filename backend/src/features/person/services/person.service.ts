@@ -1,6 +1,6 @@
 import { unifiedResponse } from 'uni-response';
 
-import { SUCCESS, ERROR } from '../../../constants/messages';
+import { ERROR, SUCCESS } from '../../../constants/messages';
 import { PersonRepository } from '../repositories/person.repository';
 import { CreatePersonInput, UpdatePersonInput } from '../types/person.types';
 

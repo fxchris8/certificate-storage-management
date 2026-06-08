@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, FileText, Settings, LogOut, Ship, Users } from "lucide-react"
+import { LayoutDashboard, LogOut, Ship, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useSignOut } from "@/features/auth/_hooks/useSignOut"
 
