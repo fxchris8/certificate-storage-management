@@ -8,7 +8,7 @@ import { auth } from '../../../middleware/auth.middleware';
 import { validateRequest } from '../../../middleware/validation.middleware';
 import { CertificateController } from '../controllers/certificate.controller';
 import { CertificateRepository } from '../repositories/certificate.repository';
-import { updateCertificateSchema } from '../schemas/certificate.schema';
+import { createCertificateSchema, updateCertificateSchema } from '../schemas/certificate.schema';
 import { CertificateService } from '../services/certificate.service';
 
 // Multer configuration for file upload
@@ -59,7 +59,13 @@ router.get(
   certificateController.downloadCertificateFile,
 );
 router.get('/:id', auth, certificateController.getCertificateById);
-router.post('/', auth, upload.single('file'), certificateController.createCertificate);
+router.post(
+  '/',
+  auth,
+  upload.single('file'),
+  validateRequest(createCertificateSchema),
+  certificateController.createCertificate,
+);
 router.put(
   '/:id',
   auth,

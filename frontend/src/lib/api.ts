@@ -19,6 +19,10 @@ api.defaults.withCredentials = true;
 
 api.interceptors.request.use(function (config) {
   if (config.headers) {
+    if (config.data instanceof FormData) {
+      config.headers.delete("Content-Type");
+    }
+
     /** Get cookies from browser */
     const token = getToken();
 

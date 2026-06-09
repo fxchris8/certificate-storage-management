@@ -6,12 +6,18 @@ import {
   PrismaClientValidationError,
 } from '@prisma/client/runtime/library';
 import { ErrorRequestHandler, NextFunction, Request, Response } from 'express';
+import multer from 'multer';
 import { unifiedResponse } from 'uni-response';
 
 import { env } from '../config/env-config';
 import { ERROR } from '../constants/messages';
 
 const environment = env.NODE_ENV || 'prod';
+const unsupportedCertificateFileMessage = 'Only .jpeg, .jpg, .png, and .pdf files are allowed';
+const multerErrorMessages: Partial<Record<multer.ErrorCode, string>> = {
+  LIMIT_FILE_SIZE: 'File size must not exceed 10MB',
+  LIMIT_UNEXPECTED_FILE: 'Only one file field named "file" is allowed',
+};
 
 const checkContentType = (req: Request, res: Response, next: NextFunction) => {
   const contentType = req.get('Content-Type');
@@ -46,6 +52,18 @@ const checkContentTypeAsURLEncodedFormData = (
 const apiErrorHandler: ErrorRequestHandler = (err, req, res, next): void => {
   if (environment === 'development') {
     console.log('err', err);
+  }
+  req.log.error({ err }, 'API request failed');
+
+  if (err instanceof multer.MulterError) {
+    res
+      .status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400)
+      .json(unifiedResponse(false, multerErrorMessages[err.code] ?? err.message));
+    return;
+  }
+  if (err instanceof Error && err.message === unsupportedCertificateFileMessage) {
+    res.status(400).json(unifiedResponse(false, unsupportedCertificateFileMessage));
+    return;
   }
   if (
     err instanceof SyntaxError &&

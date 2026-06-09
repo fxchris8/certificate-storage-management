@@ -3,7 +3,11 @@ import fs from 'fs-extra';
 import path from 'path';
 
 import { env } from '../../../config/env-config';
-import { downloadFileFromDrive, uploadFileToDrive } from '../../../lib/google-drive';
+import {
+  deleteFileFromDrive,
+  downloadFileFromDrive,
+  uploadFileToDrive,
+} from '../../../lib/google-drive';
 import { CertificateService } from '../services/certificate.service';
 import { CreateCertificateInput, UpdateCertificateInput } from '../types/certificate.types';
 
@@ -39,6 +43,9 @@ export class CertificateController {
   };
 
   createCertificate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    let driveFileId: string | undefined;
+    const temporaryFilePath = req.file?.path;
+
     try {
       const file = req.file;
       if (!file) {
@@ -53,8 +60,7 @@ export class CertificateController {
         file.mimetype,
         env.GDRIVE_FOLDER_ID,
       );
-
-      await fs.remove(file.path);
+      driveFileId = driveFile.id;
 
       const data: CreateCertificateInput = {
         personId,
@@ -66,7 +72,23 @@ export class CertificateController {
       const result = await this.certificateService.createCertificate(data);
       res.status(result.success ? 201 : 400).json(result);
     } catch (error) {
+      if (driveFileId) {
+        try {
+          await deleteFileFromDrive(driveFileId);
+        } catch (cleanupError) {
+          req.log.warn({ err: cleanupError }, 'Failed to clean up orphaned Drive file');
+        }
+      }
+
       next(error);
+    } finally {
+      if (temporaryFilePath) {
+        try {
+          await fs.remove(temporaryFilePath);
+        } catch (cleanupError) {
+          req.log.warn({ err: cleanupError }, 'Failed to clean up temporary certificate file');
+        }
+      }
     }
   };
 

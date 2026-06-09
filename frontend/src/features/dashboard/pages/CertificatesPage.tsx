@@ -45,6 +45,11 @@ import { BASE_URL } from "@/lib/api"
 
 const ITEMS_PER_PAGE = 5
 
+type UploadMutationError = {
+  response?: { data?: { message?: string } }
+  message?: string
+}
+
 export function CertificatesPage() {
   const { seamancode } = useParams()
   const navigate = useNavigate()
@@ -64,6 +69,8 @@ export function CertificatesPage() {
   // Mutations
   const createMutation = usePostCertificate()
   const deleteMutation = useDeleteCertificate()
+  const uploadError = createMutation.error as UploadMutationError | null
+  const uploadErrorMessage = uploadError?.response?.data?.message ?? uploadError?.message
 
   const allDocuments = certificates ?? []
   const totalPages = Math.ceil(allDocuments.length / ITEMS_PER_PAGE)
@@ -321,7 +328,13 @@ export function CertificatesPage() {
       </Card>
 
       {/* Create Certificate Dialog */}
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+      <Dialog
+        open={isCreateOpen}
+        onOpenChange={(open) => {
+          setIsCreateOpen(open)
+          if (open) createMutation.reset()
+        }}
+      >
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold">Upload Sertifikat</DialogTitle>
@@ -356,6 +369,11 @@ export function CertificatesPage() {
               />
               <p className="text-xs text-zinc-500">Format: JPEG, JPG, PNG, PDF. Maks 10MB</p>
             </div>
+            {uploadErrorMessage && (
+              <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {uploadErrorMessage}
+              </p>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>

@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
+import fs from 'fs-extra';
 import { unifiedResponse } from 'uni-response';
 import { ZodSchema } from 'zod';
 
@@ -10,6 +11,10 @@ export const validateRequest = (schema: ZodSchema<unknown>) => {
     const validationResult = schema.safeParse(req.body);
 
     if (!validationResult.success) {
+      if (req.file?.path) {
+        fs.removeSync(req.file.path);
+      }
+
       // Extract error messages
       const errorMessages = validationResult.error.errors.map(err => ({
         path: err.path.join('.'),
