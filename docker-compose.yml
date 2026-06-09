@@ -1,22 +1,4 @@
 services:
-  # postgres:
-  #   image: postgres:16-alpine
-  #   container_name: certificate_storage_management_db_prod
-  #   restart: always
-  #   environment:
-  #     POSTGRES_USER: ${POSTGRES_USER:-postgres}
-  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-  #     POSTGRES_DB: ${POSTGRES_DB:-certificate_db}
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  #   networks:
-  #     - certificate-network
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
-
   backend:
     container_name: certificate_storage_management_backend_prod
     build:
@@ -28,20 +10,14 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 5000
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-certificate_db}
-      SHADOW_DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-certificate_db}_shadow
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@${POSTGRES_HOST:?Set POSTGRES_HOST in .env}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-certificate_db}
+      SHADOW_DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@${POSTGRES_HOST:?Set POSTGRES_HOST in .env}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-certificate_db}_shadow
       JWT_SECRET: ${JWT_SECRET}
       WHITE_LIST_URLS: ${WHITE_LIST_URLS:-https://pe.spil.co.id,http://localhost:3000,http://localhost:5173}
       GDRIVE_CLIENT_EMAIL: ${GDRIVE_CLIENT_EMAIL}
       GDRIVE_PRIVATE_KEY: ${GDRIVE_PRIVATE_KEY}
       GDRIVE_FOLDER_ID: ${GDRIVE_FOLDER_ID}
-    depends_on:
-      postgres:
-        condition: service_healthy
-    expose:
-      - "5000"
     networks:
-      - certificate-network
       - traefik-net
     healthcheck:
       test:
@@ -83,8 +59,6 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-    expose:
-      - "80"
     networks:
       - traefik-net
     labels:
@@ -109,17 +83,12 @@ services:
     expose:
       - "8000"
     networks:
-      - certificate-network
+      - traefik-net
     volumes:
       - ./ocr/samples:/app/samples
       - ./ocr/results:/app/results
 
 networks:
-  certificate-network:
-    driver: bridge
   traefik-net:
     name: traefik-net
     external: true
-
-volumes:
-  postgres_data:
