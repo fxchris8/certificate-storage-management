@@ -13,6 +13,28 @@ interface AuthPayload {
   username: string;
 }
 
+const authCookieName = '@cert-storage-token';
+
+const getCookieValue = (
+  cookieHeader: string | undefined,
+  cookieName: string,
+): string | undefined => {
+  if (!cookieHeader) {
+    return undefined;
+  }
+
+  const cookie = cookieHeader
+    .split(';')
+    .map(value => value.trim())
+    .find(value => value.startsWith(`${cookieName}=`));
+
+  if (!cookie) {
+    return undefined;
+  }
+
+  return decodeURIComponent(cookie.slice(cookieName.length + 1));
+};
+
 // Augment the Express Request object to include custom properties
 declare global {
   namespace Express {
@@ -38,7 +60,9 @@ class AuthService {
    * Authenticate and validate the JWT token
    */
   public auth(req: Request, res: Response, next: NextFunction): void {
-    const token = req.headers.authorization?.split(' ')[1];
+    const token =
+      req.headers.authorization?.split(' ')[1] ||
+      getCookieValue(req.headers.cookie, authCookieName);
 
     if (!token) {
       res.status(401).json(unifiedResponse(false, 'No token provided'));
