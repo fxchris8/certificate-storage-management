@@ -1,25 +1,47 @@
 import fs from 'fs-extra';
-import { google } from 'googleapis';
+import { drive_v3, google } from 'googleapis';
 import path from 'path';
 
 import { env } from '../config/env-config';
 
-if (!env.GDRIVE_CLIENT_EMAIL || !env.GDRIVE_PRIVATE_KEY) {
+const driveScope = 'https://www.googleapis.com/auth/drive';
+
+function createDriveClient(): drive_v3.Drive {
+  const useOAuth =
+    Boolean(env.GOOGLE_CLIENT_ID) ||
+    Boolean(env.GOOGLE_CLIENT_SECRET) ||
+    Boolean(env.GOOGLE_REFRESH_TOKEN);
+
+  if (useOAuth) {
+    if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET || !env.GOOGLE_REFRESH_TOKEN) {
+      throw new Error(
+        'Google Drive OAuth credentials are incomplete. Set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REFRESH_TOKEN.',
+      );
+    }
+
+    const auth = new google.auth.OAuth2(env.GOOGLE_CLIENT_ID, env.GOOGLE_CLIENT_SECRET);
+
+    auth.setCredentials({
+      refresh_token: env.GOOGLE_REFRESH_TOKEN,
+    });
+
+    return google.drive({ version: 'v3', auth });
+  }
+
+  if (env.GDRIVE_CLIENT_EMAIL && env.GDRIVE_PRIVATE_KEY) {
+    const auth = new google.auth.JWT({
+      email: env.GDRIVE_CLIENT_EMAIL,
+      key: env.GDRIVE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      scopes: [driveScope],
+    });
+
+    return google.drive({ version: 'v3', auth });
+  }
+
   throw new Error(
-    'Google Drive credentials are not configured. Set GDRIVE_CLIENT_EMAIL and GDRIVE_PRIVATE_KEY.',
+    'Google Drive credentials are not configured. Set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REFRESH_TOKEN.',
   );
 }
-
-const gdriveClientEmail = env.GDRIVE_CLIENT_EMAIL;
-const gdrivePrivateKey = env.GDRIVE_PRIVATE_KEY.replace(/\\n/g, '\n');
-
-const auth = new google.auth.JWT({
-  email: gdriveClientEmail,
-  key: gdrivePrivateKey,
-  scopes: ['https://www.googleapis.com/auth/drive'],
-});
-
-const drive = google.drive({ version: 'v3', auth });
 
 export async function uploadFileToDrive(
   filePath: string,
@@ -40,7 +62,7 @@ export async function uploadFileToDrive(
     body: fs.createReadStream(filePath),
   };
 
-  const response = await drive.files.create({
+  const response = await createDriveClient().files.create({
     requestBody: fileMetadata,
     media,
     fields: 'id,name',
@@ -57,7 +79,7 @@ export async function uploadFileToDrive(
 }
 
 export async function getDriveFileMetadata(fileId: string) {
-  const response = await drive.files.get({
+  const response = await createDriveClient().files.get({
     fileId,
     fields: 'id,name,mimeType',
     supportsAllDrives: true,
@@ -66,7 +88,7 @@ export async function getDriveFileMetadata(fileId: string) {
 }
 
 export async function downloadFileFromDrive(fileId: string) {
-  const response = await drive.files.get(
+  const response = await createDriveClient().files.get(
     {
       fileId,
       alt: 'media',
@@ -81,7 +103,7 @@ export async function downloadFileFromDrive(fileId: string) {
 }
 
 export async function deleteFileFromDrive(fileId: string) {
-  await drive.files.delete({
+  await createDriveClient().files.delete({
     fileId,
     supportsAllDrives: true,
   });
