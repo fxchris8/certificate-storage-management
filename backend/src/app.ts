@@ -4,6 +4,7 @@ import helmet from 'helmet';
 
 import { env } from './config/env-config';
 import certificateRoutes from './features/certificate/routes/certificate.routes';
+import ocrRoutes from './features/ocr/routes/ocr.routes';
 import personRoutes from './features/person/routes/person.routes';
 import authRoutes from './features/user/routes/auth.routes';
 import userRoutes from './features/user/routes/user.routes';
@@ -42,6 +43,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/persons', personRoutes);
 app.use('/api/certificates', certificateRoutes);
+app.use('/api/ocr', ocrRoutes);
 
 // Error Handling Middleware (Optional)
 // For prisma error and other error

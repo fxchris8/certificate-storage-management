@@ -41,13 +41,41 @@ import { useGetCertificates } from "../_hooks/useGetCertificates"
 import { usePostCertificate } from "../_hooks/usePostCertificate"
 import { useDeleteCertificate } from "../_hooks/useDeleteCertificate"
 import { useGetPersons } from "@/features/person/_hooks/useGetPersons"
-import { BASE_URL } from "@/lib/api"
+import api, { BASE_URL } from "@/lib/api"
 
 const ITEMS_PER_PAGE = 5
 
 type UploadMutationError = {
   response?: { data?: { message?: string } }
   message?: string
+}
+
+type OcrExtractResponse = {
+  success: boolean
+  data?: {
+    training_name: string
+    confidence: number
+    status: "auto_approved" | "needs_review" | "failed"
+    raw_text?: string | null
+  } | null
+  error?: string | null
+  message?: string
+}
+
+type ApiErrorLike = {
+  response?: { data?: { message?: string; error?: string; detail?: string } }
+  message?: string
+}
+
+const getApiErrorMessage = (error: unknown, fallback: string) => {
+  const apiError = error as ApiErrorLike
+  return (
+    apiError.response?.data?.message ??
+    apiError.response?.data?.error ??
+    apiError.response?.data?.detail ??
+    apiError.message ??
+    fallback
+  )
 }
 
 export function CertificatesPage() {
@@ -57,7 +85,10 @@ export function CertificatesPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [createForm, setCreateForm] = useState({ certificateName: "", nomorSertifikat: "" })
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const ocrRequestIdRef = useRef(0)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [ocrStatus, setOcrStatus] = useState<"idle" | "processing" | "success" | "error" | "skipped">("idle")
+  const [ocrFeedback, setOcrFeedback] = useState("")
 
   // Fetch persons to find the current seafarer and get personId
   const { data: persons } = useGetPersons()
@@ -97,9 +128,54 @@ export function CertificatesPage() {
         setIsCreateOpen(false)
         setCreateForm({ certificateName: "", nomorSertifikat: "" })
         setSelectedFile(null)
+        setOcrStatus("idle")
+        setOcrFeedback("")
         if (fileInputRef.current) fileInputRef.current.value = ""
       },
     })
+  }
+
+  const handleCertificateFileChange = async (file: File | null) => {
+    const requestId = ocrRequestIdRef.current + 1
+    ocrRequestIdRef.current = requestId
+    setSelectedFile(file)
+    setOcrStatus("idle")
+    setOcrFeedback("")
+
+    if (!file) return
+
+    if (!file.type.startsWith("image/")) {
+      setOcrStatus("skipped")
+      setOcrFeedback("OCR hanya tersedia untuk JPG/PNG. Isi nama sertifikat manual.")
+      return
+    }
+
+    setOcrStatus("processing")
+    setOcrFeedback("Membaca nama sertifikat...")
+
+    const formData = new FormData()
+    formData.append("image", file)
+
+    try {
+      const response = await api.post<OcrExtractResponse>("/ocr/extract", formData, { timeout: 60000 })
+      if (ocrRequestIdRef.current !== requestId) return
+
+      const result = response.data.data
+      if (!response.data.success || !result?.training_name) {
+        throw new Error(response.data.message ?? response.data.error ?? "OCR tidak menemukan nama sertifikat")
+      }
+
+      setCreateForm((prev) => ({
+        ...prev,
+        certificateName: result.training_name,
+      }))
+      setOcrStatus("success")
+      setOcrFeedback(`OCR berhasil mengisi nama sertifikat (${(result.confidence * 100).toFixed(1)}%).`)
+    } catch (error) {
+      if (ocrRequestIdRef.current !== requestId) return
+      setOcrStatus("error")
+      setOcrFeedback(getApiErrorMessage(error, "OCR gagal membaca file. Isi nama sertifikat manual."))
+    }
   }
 
   const handleDelete = (id: string) => {
@@ -332,7 +408,11 @@ export function CertificatesPage() {
         open={isCreateOpen}
         onOpenChange={(open) => {
           setIsCreateOpen(open)
-          if (open) createMutation.reset()
+          if (open) {
+            createMutation.reset()
+            setOcrStatus("idle")
+            setOcrFeedback("")
+          }
         }}
       >
         <DialogContent className="sm:max-w-[480px]">
@@ -346,7 +426,12 @@ export function CertificatesPage() {
                 id="certificateName"
                 placeholder="e.g. Basic Safety Training"
                 value={createForm.certificateName}
-                onChange={(e) => setCreateForm({ ...createForm, certificateName: e.target.value })}
+                onChange={(e) =>
+                  setCreateForm({
+                    ...createForm,
+                    certificateName: e.target.value,
+                  })
+                }
               />
             </div>
             <div className="space-y-2">
@@ -355,7 +440,12 @@ export function CertificatesPage() {
                 id="nomorSertifikat"
                 placeholder="e.g. BST-2023-001"
                 value={createForm.nomorSertifikat}
-                onChange={(e) => setCreateForm({ ...createForm, nomorSertifikat: e.target.value })}
+                onChange={(e) =>
+                  setCreateForm({
+                    ...createForm,
+                    nomorSertifikat: e.target.value,
+                  })
+                }
               />
             </div>
             <div className="space-y-2">
@@ -365,9 +455,24 @@ export function CertificatesPage() {
                 type="file"
                 ref={fileInputRef}
                 accept=".jpeg,.jpg,.png,.pdf"
-                onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+                onChange={(e) => {
+                  void handleCertificateFileChange(e.target.files?.[0] ?? null)
+                }}
               />
               <p className="text-xs text-zinc-500">Format: JPEG, JPG, PNG, PDF. Maks 10MB</p>
+              {ocrFeedback && (
+                <p
+                  className={cn(
+                    "text-xs",
+                    ocrStatus === "success" && "text-emerald-600",
+                    ocrStatus === "processing" && "text-zinc-500",
+                    ocrStatus === "error" && "text-red-600",
+                    ocrStatus === "skipped" && "text-amber-600",
+                  )}
+                >
+                  {ocrFeedback}
+                </p>
+              )}
             </div>
             {uploadErrorMessage && (
               <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -381,13 +486,18 @@ export function CertificatesPage() {
             </Button>
             <Button
               onClick={handleCreateSubmit}
-              disabled={!createForm.certificateName || !createForm.nomorSertifikat || !selectedFile || createMutation.isPending}
+              disabled={!createForm.certificateName || !createForm.nomorSertifikat || !selectedFile || createMutation.isPending || ocrStatus === "processing"}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
               {createMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Uploading...
+                </>
+              ) : ocrStatus === "processing" ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  OCR...
                 </>
               ) : (
                 <>

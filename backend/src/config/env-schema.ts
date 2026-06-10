@@ -20,6 +20,7 @@ export const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   GOOGLE_REFRESH_TOKEN: z.string().optional(),
   GOOGLE_REDIRECT_URI: z.string().url().optional(),
+  OCR_SERVICE_URL: z.string().url().default('http://ocr:8000'),
 });
 
 export type EnvVars = z.infer<typeof envSchema>;
