@@ -96,8 +96,6 @@ services:
       OCR_USE_GPU: ${OCR_USE_GPU:-false}
     expose:
       - "8000"
-    ports:
-      - "${OCR_PORT:-8001}:8000"
     networks:
       - traefik-net
     volumes:
