@@ -1,4 +1,5 @@
-import { PrismaClient, ExternalSubmission } from '@prisma/client';
+import { ExternalSubmission, PrismaClient } from '@prisma/client';
+
 import { CreateExternalSubmissionInput } from '../types/external-submission.types.js';
 
 export class ExternalSubmissionRepository {
@@ -6,7 +7,7 @@ export class ExternalSubmissionRepository {
 
   async create(data: CreateExternalSubmissionInput): Promise<ExternalSubmission> {
     const person = await this.prisma.person.findFirst({
-      where: { seamancode: data.seafarerCode },
+      where: { seafarercode: data.seafarerCode },
     });
 
     return this.prisma.externalSubmission.create({
@@ -22,7 +23,12 @@ export class ExternalSubmissionRepository {
     });
   }
 
-  async findAll(page?: number, limit?: number, status?: string, search?: string): Promise<ExternalSubmission[]> {
+  async findAll(
+    page?: number,
+    limit?: number,
+    status?: string,
+    search?: string,
+  ): Promise<ExternalSubmission[]> {
     const where: any = {};
     if (status) {
       where.status = status;
@@ -73,7 +79,9 @@ export class ExternalSubmissionRepository {
     });
   }
 
-  async findByExternalSubmissionId(externalSubmissionId: string): Promise<ExternalSubmission | null> {
+  async findByExternalSubmissionId(
+    externalSubmissionId: string,
+  ): Promise<ExternalSubmission | null> {
     return this.prisma.externalSubmission.findFirst({
       where: { externalSubmissionId },
     });
@@ -84,7 +92,7 @@ export class ExternalSubmissionRepository {
     status: string,
     reviewNotes: string,
     reviewedBy: string,
-    personId?: string
+    personId?: string,
   ): Promise<ExternalSubmission> {
     return this.prisma.externalSubmission.update({
       where: { id },

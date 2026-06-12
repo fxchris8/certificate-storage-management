@@ -7,19 +7,22 @@ export class CertificateRepository {
     this.prisma = prismaClient;
   }
 
-  async findBySeafarerCode(seafarerCode: string, params?: { skip?: number; take?: number; search?: string }) {
+  async findBySeafarerCode(
+    seafarerCode: string,
+    params?: { skip?: number; take?: number; search?: string },
+  ) {
     const { skip, take, search } = params || {};
     const where: any = {
-      person: { seamancode: seafarerCode },
+      person: { seafarercode: seafarerCode },
     };
 
     if (search) {
       where.AND = {
-         OR: [
+        OR: [
           { certificateName: { contains: search, mode: 'insensitive' } },
           { nomorSertifikat: { contains: search, mode: 'insensitive' } },
-        ]
-      }
+        ],
+      };
     }
 
     const [data, total] = await Promise.all([
@@ -43,13 +46,24 @@ export class CertificateRepository {
     return { data, total };
   }
 
-  async checkMandatoryDocs(seafarerCode: string): Promise<{ hasIjazah: boolean; hasEndorse: boolean; hasMedicalCheckup: boolean }> {
-    const baseWhere = { person: { seamancode: seafarerCode } };
+  async checkMandatoryDocs(
+    seafarerCode: string,
+  ): Promise<{ hasIjazah: boolean; hasEndorse: boolean; hasMedicalCheckup: boolean }> {
+    const baseWhere = { person: { seafarercode: seafarerCode } };
 
     const [ijazah, endorse, medical] = await Promise.all([
-      this.prisma.certificate.findFirst({ where: { ...baseWhere, certificateName: 'Ijazah' }, select: { id: true } }),
-      this.prisma.certificate.findFirst({ where: { ...baseWhere, certificateName: 'Endorse' }, select: { id: true } }),
-      this.prisma.certificate.findFirst({ where: { ...baseWhere, certificateName: 'Medical Checkup' }, select: { id: true } }),
+      this.prisma.certificate.findFirst({
+        where: { ...baseWhere, certificateName: 'Ijazah' },
+        select: { id: true },
+      }),
+      this.prisma.certificate.findFirst({
+        where: { ...baseWhere, certificateName: 'Endorse' },
+        select: { id: true },
+      }),
+      this.prisma.certificate.findFirst({
+        where: { ...baseWhere, certificateName: 'Medical Checkup' },
+        select: { id: true },
+      }),
     ]);
 
     return {
@@ -77,7 +91,7 @@ export class CertificateRepository {
     return this.prisma.certificate.findFirst({
       where: {
         nomorSertifikat,
-        person: { seamancode: seafarerCode },
+        person: { seafarercode: seafarerCode },
       },
       select: {
         id: true,
@@ -90,7 +104,12 @@ export class CertificateRepository {
     });
   }
 
-  async create(data: { personId: string; certificateName: string; nomorSertifikat: string; fileUrl: string }) {
+  async create(data: {
+    personId: string;
+    certificateName: string;
+    nomorSertifikat: string;
+    fileUrl: string;
+  }) {
     return this.prisma.certificate.create({
       data,
       select: {
@@ -104,7 +123,10 @@ export class CertificateRepository {
     });
   }
 
-  async update(id: string, data: { certificateName?: string; nomorSertifikat?: string; fileUrl?: string }) {
+  async update(
+    id: string,
+    data: { certificateName?: string; nomorSertifikat?: string; fileUrl?: string },
+  ) {
     return this.prisma.certificate.update({
       where: { id },
       data,
@@ -133,8 +155,8 @@ export class CertificateRepository {
 
   async findPersonBySeafarerCode(seafarerCode: string) {
     const person = await this.prisma.person.findFirst({
-      where: { seamancode: seafarerCode },
-      select: { id: true, name: true, seamancode: true },
+      where: { seafarercode: seafarerCode },
+      select: { id: true, name: true, seafarercode: true },
     });
 
     if (!person) return null;
@@ -142,7 +164,7 @@ export class CertificateRepository {
     return {
       id: person.id,
       name: person.name,
-      seafarercode: person.seamancode,
+      seafarercode: person.seafarercode,
     };
   }
 }

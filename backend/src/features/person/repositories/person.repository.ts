@@ -14,7 +14,7 @@ export class PersonRepository {
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
-        { seamancode: { contains: search, mode: 'insensitive' } },
+        { seafarercode: { contains: search, mode: 'insensitive' } },
       ];
     }
 
@@ -26,7 +26,7 @@ export class PersonRepository {
         select: {
           id: true,
           name: true,
-          seamancode: true,
+          seafarercode: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -36,10 +36,10 @@ export class PersonRepository {
     ]);
 
     return {
-      data: data.map((person) => ({
+      data: data.map(person => ({
         id: person.id,
         name: person.name,
-        seafarercode: person.seamancode,
+        seafarercode: person.seafarercode,
         createdAt: person.createdAt,
         updatedAt: person.updatedAt,
       })),
@@ -49,11 +49,11 @@ export class PersonRepository {
 
   async findBySeafarerCode(seafarercode: string) {
     const person = await this.prisma.person.findFirst({
-      where: { seamancode: seafarercode },
+      where: { seafarercode },
       select: {
         id: true,
         name: true,
-        seamancode: true,
+        seafarercode: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -64,7 +64,7 @@ export class PersonRepository {
     return {
       id: person.id,
       name: person.name,
-      seafarercode: person.seamancode,
+      seafarercode: person.seafarercode,
       createdAt: person.createdAt,
       updatedAt: person.updatedAt,
     };
@@ -76,7 +76,7 @@ export class PersonRepository {
       select: {
         id: true,
         name: true,
-        seamancode: true,
+        seafarercode: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -87,7 +87,7 @@ export class PersonRepository {
     return {
       id: person.id,
       name: person.name,
-      seafarercode: person.seamancode,
+      seafarercode: person.seafarercode,
       createdAt: person.createdAt,
       updatedAt: person.updatedAt,
     };
@@ -97,12 +97,12 @@ export class PersonRepository {
     const person = await this.prisma.person.create({
       data: {
         name: data.name,
-        seamancode: data.seafarercode,
+        seafarercode: data.seafarercode,
       },
       select: {
         id: true,
         name: true,
-        seamancode: true,
+        seafarercode: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -111,7 +111,7 @@ export class PersonRepository {
     return {
       id: person.id,
       name: person.name,
-      seafarercode: person.seamancode,
+      seafarercode: person.seafarercode,
       createdAt: person.createdAt,
       updatedAt: person.updatedAt,
     };
@@ -122,12 +122,12 @@ export class PersonRepository {
       where: { id },
       data: {
         ...(data.name !== undefined ? { name: data.name } : {}),
-        ...(data.seafarercode !== undefined ? { seamancode: data.seafarercode } : {}),
+        ...(data.seafarercode !== undefined ? { seafarercode: data.seafarercode } : {}),
       },
       select: {
         id: true,
         name: true,
-        seamancode: true,
+        seafarercode: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -136,7 +136,7 @@ export class PersonRepository {
     return {
       id: person.id,
       name: person.name,
-      seafarercode: person.seamancode,
+      seafarercode: person.seafarercode,
       createdAt: person.createdAt,
       updatedAt: person.updatedAt,
     };
@@ -148,14 +148,14 @@ export class PersonRepository {
       select: {
         id: true,
         name: true,
-        seamancode: true,
+        seafarercode: true,
       },
     });
 
     return {
       id: person.id,
       name: person.name,
-      seafarercode: person.seamancode,
+      seafarercode: person.seafarercode,
     };
   }
 

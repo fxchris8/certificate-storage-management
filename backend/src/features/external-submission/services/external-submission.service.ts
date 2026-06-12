@@ -1,36 +1,60 @@
+import path from 'path';
 import { unifiedResponse } from 'uni-response';
-import { ExternalSubmissionRepository } from '../repositories/external-submission.repository.js';
+
+import { ERROR, SUCCESS } from '../../../constants/messages.js';
+import { FileStorageService } from '../../../services/file-storage.service.js';
 import { CertificateRepository } from '../../certificate/repositories/certificate.repository.js';
 import { PersonRepository } from '../../person/repositories/person.repository.js';
-import { CreateExternalSubmissionInput, ReviewSubmissionInput } from '../types/external-submission.types.js';
-import { SUCCESS, ERROR } from '../../../constants/messages.js';
+import { ExternalSubmissionRepository } from '../repositories/external-submission.repository.js';
+import {
+  CreateExternalSubmissionInput,
+  ReviewSubmissionInput,
+} from '../types/external-submission.types.js';
 
 export class ExternalSubmissionService {
   constructor(
     private externalSubmissionRepository: ExternalSubmissionRepository,
     private certificateRepository: CertificateRepository,
-    private personRepository: PersonRepository
+    private personRepository: PersonRepository,
+    private fileStorageService: FileStorageService,
   ) {}
 
   async createSubmission(data: CreateExternalSubmissionInput, file: Express.Multer.File) {
+    const externalFileUrl = await this.fileStorageService.upload(
+      file,
+      this.createFileName(
+        data.seafarerCode,
+        data.certificateName,
+        data.nomorSertifikat,
+        file.originalname,
+      ),
+    );
+
     try {
-      // Save file path instead of external URL
       const submissionData = {
         ...data,
-        externalFileUrl: file.path, // Save local file path
+        externalFileUrl,
       };
-      
+
       const submission = await this.externalSubmissionRepository.create(submissionData);
       return unifiedResponse(true, SUCCESS.EXTERNAL_SUBMISSION_CREATED, submission);
     } catch (error) {
+      await this.fileStorageService.delete(externalFileUrl).catch(cleanupError => {
+        console.error('Failed to roll back external submission upload:', cleanupError);
+      });
       return unifiedResponse(false, ERROR.INTERNAL_SERVER_ERROR);
     }
   }
 
   async getSubmissions(page?: number, limit?: number, status?: string, search?: string) {
     try {
-      const submissions = await this.externalSubmissionRepository.findAll(page, limit, status, search);
-      
+      const submissions = await this.externalSubmissionRepository.findAll(
+        page,
+        limit,
+        status,
+        search,
+      );
+
       if (page && limit) {
         const totalCount = await this.externalSubmissionRepository.count(status, search);
         return unifiedResponse(true, SUCCESS.EXTERNAL_SUBMISSION_FOUND, {
@@ -93,7 +117,7 @@ export class ExternalSubmissionService {
         'APPROVED',
         data.reviewNotes,
         userId,
-        personId
+        personId,
       );
 
       await this.certificateRepository.create({
@@ -124,7 +148,7 @@ export class ExternalSubmissionService {
         id,
         'REJECTED',
         data.reviewNotes,
-        userId
+        userId,
       );
 
       return unifiedResponse(true, SUCCESS.EXTERNAL_SUBMISSION_REJECTED, updated);
@@ -135,7 +159,8 @@ export class ExternalSubmissionService {
 
   async getSubmissionStatusByExternalId(externalSubmissionId: string) {
     try {
-      const submission = await this.externalSubmissionRepository.findByExternalSubmissionId(externalSubmissionId);
+      const submission =
+        await this.externalSubmissionRepository.findByExternalSubmissionId(externalSubmissionId);
       if (!submission) {
         return unifiedResponse(false, ERROR.EXTERNAL_SUBMISSION_NOT_FOUND);
       }
@@ -157,16 +182,30 @@ export class ExternalSubmissionService {
       return { success: false, message: ERROR.EXTERNAL_SUBMISSION_NOT_FOUND };
     }
 
-    const path = await import('path');
-    const fs = await import('fs-extra');
-    
-    const filePath = path.default.resolve(submission.externalFileUrl);
-    const exists = await fs.default.pathExists(filePath);
-    
-    if (!exists) {
-      return { success: false, message: 'File not found on server' };
+    try {
+      const file = await this.fileStorageService.read(submission.externalFileUrl);
+      return { success: true, file };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Submission file could not be read',
+      };
     }
+  }
 
-    return { success: true, filePath };
+  private createFileName(
+    seafarerCode: string,
+    certificateName: string,
+    nomorSertifikat: string,
+    originalName: string,
+  ): string {
+    const extension = path.extname(originalName).toLowerCase();
+    const baseName = `${seafarerCode}-${certificateName}-${nomorSertifikat}`
+      .replace(/[\\/:*?"<>|]+/g, '-')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 180);
+
+    return `${baseName || 'external-certificate'}${extension}`;
   }
 }

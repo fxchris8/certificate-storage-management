@@ -4,6 +4,18 @@ This is a backend built with Node.js, Express, TypeScript, and Prisma ORM. It fo
 
 Designed to be modular and maintainable, the project features a clean architecture, making it easy to extend with new functionalities.
 
+## Google Drive certificate storage
+
+New certificate uploads are stored in Google Drive using an OAuth2 user account. Configure
+`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN`,
+`GOOGLE_REDIRECT_URI`, and `GDRIVE_FOLDER_ID` in the root `.env` file. The refresh
+token must have access to Google Drive and the configured user must be able to write
+to the target folder.
+
+The database stores an internal `gdrive://<file-id>` reference. View and download
+requests are proxied through the backend, so Drive files do not need public sharing.
+Existing local paths and external HTTP URLs remain readable for backward compatibility.
+
 ## ✨ Features
 
 🛠️ Core Features\

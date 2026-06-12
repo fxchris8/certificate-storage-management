@@ -1,4 +1,5 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
+
 import { ExternalSubmissionService } from '../services/external-submission.service.js';
 
 export class ExternalSubmissionController {
@@ -26,7 +27,12 @@ export class ExternalSubmissionController {
       const status = req.query.status as string | undefined;
       const search = req.query.search as string | undefined;
 
-      const result = await this.externalSubmissionService.getSubmissions(page, limit, status, search);
+      const result = await this.externalSubmissionService.getSubmissions(
+        page,
+        limit,
+        status,
+        search,
+      );
       res.status(200).json(result);
     } catch (error) {
       next(error);
@@ -47,7 +53,11 @@ export class ExternalSubmissionController {
     try {
       const { id } = req.params;
       const userId = req.userId!;
-      const result = await this.externalSubmissionService.approveSubmission(id as string, req.body, userId);
+      const result = await this.externalSubmissionService.approveSubmission(
+        id as string,
+        req.body,
+        userId,
+      );
       res.status(result.success ? 200 : 400).json(result);
     } catch (error) {
       next(error);
@@ -58,7 +68,11 @@ export class ExternalSubmissionController {
     try {
       const { id } = req.params;
       const userId = req.userId!;
-      const result = await this.externalSubmissionService.rejectSubmission(id as string, req.body, userId);
+      const result = await this.externalSubmissionService.rejectSubmission(
+        id as string,
+        req.body,
+        userId,
+      );
       res.status(result.success ? 200 : 400).json(result);
     } catch (error) {
       next(error);
@@ -68,7 +82,9 @@ export class ExternalSubmissionController {
   getSubmissionStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { externalSubmissionId } = req.params;
-      const result = await this.externalSubmissionService.getSubmissionStatusByExternalId(externalSubmissionId as string);
+      const result = await this.externalSubmissionService.getSubmissionStatusByExternalId(
+        externalSubmissionId as string,
+      );
       res.status(result.success ? 200 : 404).json(result);
     } catch (error) {
       next(error);
@@ -90,15 +106,18 @@ export class ExternalSubmissionController {
       res.removeHeader('X-Frame-Options');
       res.removeHeader('Content-Security-Policy');
       res.removeHeader('Cross-Origin-Resource-Policy');
-      res.setHeader('Content-Security-Policy', "frame-ancestors *; img-src 'self'; style-src 'unsafe-inline'");
+      res.setHeader(
+        'Content-Security-Policy',
+        "frame-ancestors *; img-src 'self'; style-src 'unsafe-inline'",
+      );
       res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
 
-      const ext = result.filePath!.toLowerCase();
-      const isImage = /\.(jpg|jpeg|png|gif|webp)$/.test(ext);
+      const isImage = result.file!.contentType.startsWith('image/');
 
       // If raw requested or PDF, serve file directly
       if (raw || !isImage) {
-        res.sendFile(result.filePath!);
+        res.setHeader('Content-Type', result.file!.contentType);
+        res.send(result.file!.buffer);
         return;
       }
 
@@ -107,7 +126,7 @@ export class ExternalSubmissionController {
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:100%;height:100%;overflow:hidden;background:#f4f4f5;display:flex;align-items:center;justify-content:center}
 img{max-width:100%;max-height:100%;object-fit:contain}</style></head>
-<body><img src="/api/external-submissions/${id}/view?raw=1" alt="Certificate"/></body></html>`;
+<body><img src="?raw=1" alt="Certificate"/></body></html>`;
 
       res.setHeader('Content-Type', 'text/html');
       res.send(html);

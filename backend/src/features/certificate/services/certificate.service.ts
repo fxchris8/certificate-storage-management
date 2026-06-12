@@ -1,19 +1,30 @@
 import path from 'path';
-import fs from 'fs-extra';
 // import FormData from 'form-data'; // Use native FormData
 import { unifiedResponse } from 'uni-response';
 
 import { env } from '../../../config/env-config';
-import { SUCCESS, ERROR } from '../../../constants/messages';
+import { ERROR, SUCCESS } from '../../../constants/messages';
+import { FileStorageService } from '../../../services/file-storage.service';
 import { CertificateRepository } from '../repositories/certificate.repository';
-import { CreateCertificateInput, UpdateCertificateInput, OcrScanResult, BulkCreateItem } from '../types/certificate.types';
+import {
+  BulkCreateItem,
+  CreateCertificateInput,
+  OcrScanResult,
+  UpdateCertificateInput,
+} from '../types/certificate.types';
 
 const OCR_REQUEST_TIMEOUT_MS = 2 * 60 * 1000;
 
 export class CertificateService {
-  constructor(private readonly certificateRepository: CertificateRepository) {}
+  constructor(
+    private readonly certificateRepository: CertificateRepository,
+    private readonly fileStorageService: FileStorageService,
+  ) {}
 
-  async getCertificatesBySeafarerCode(seafarerCode: string, params?: { page?: number; limit?: number; search?: string }) {
+  async getCertificatesBySeafarerCode(
+    seafarerCode: string,
+    params?: { page?: number; limit?: number; search?: string },
+  ) {
     const person = await this.certificateRepository.findPersonBySeafarerCode(seafarerCode);
     if (!person) {
       return unifiedResponse(false, ERROR.PERSON_NOT_FOUND);
@@ -35,7 +46,7 @@ export class CertificateService {
         total,
         totalPages: Math.ceil(total / limit),
         ...mandatoryFlags,
-      }
+      },
     });
   }
 
@@ -47,21 +58,60 @@ export class CertificateService {
     return unifiedResponse(true, SUCCESS.CERTIFICATE_FOUND, certificate);
   }
 
-  async createCertificate(data: CreateCertificateInput) {
-    const certificate = await this.certificateRepository.create(data);
-    return unifiedResponse(true, SUCCESS.CERTIFICATE_CREATED, certificate);
+  async createCertificate(data: CreateCertificateInput, file: Express.Multer.File) {
+    const fileUrl = await this.fileStorageService.upload(
+      file,
+      this.createFileName(data.certificateName, data.nomorSertifikat, file.originalname),
+    );
+
+    try {
+      const certificate = await this.certificateRepository.create({ ...data, fileUrl });
+      return unifiedResponse(true, SUCCESS.CERTIFICATE_CREATED, certificate);
+    } catch (error) {
+      await this.fileStorageService.delete(fileUrl).catch(cleanupError => {
+        console.error('Failed to roll back Google Drive upload:', cleanupError);
+      });
+      throw error;
+    }
   }
 
-  async updateCertificate(id: string, data: UpdateCertificateInput) {
+  async updateCertificate(id: string, data: UpdateCertificateInput, file?: Express.Multer.File) {
     const existing = await this.certificateRepository.findById(id);
     if (!existing) {
       return unifiedResponse(false, ERROR.CERTIFICATE_NOT_FOUND);
     }
 
+    let uploadedFileUrl: string | undefined;
     try {
-      const updated = await this.certificateRepository.update(id, data);
+      if (file) {
+        uploadedFileUrl = await this.fileStorageService.upload(
+          file,
+          this.createFileName(
+            data.certificateName || existing.certificateName,
+            data.nomorSertifikat || existing.nomorSertifikat,
+            file.originalname,
+          ),
+        );
+      }
+
+      const updated = await this.certificateRepository.update(id, {
+        ...data,
+        ...(uploadedFileUrl && { fileUrl: uploadedFileUrl }),
+      });
+
+      if (uploadedFileUrl && existing.fileUrl) {
+        await this.fileStorageService.delete(existing.fileUrl).catch(cleanupError => {
+          console.error('Failed to delete replaced certificate file:', cleanupError);
+        });
+      }
+
       return unifiedResponse(true, SUCCESS.CERTIFICATE_UPDATED, updated);
     } catch (error) {
+      if (uploadedFileUrl) {
+        await this.fileStorageService.delete(uploadedFileUrl).catch(cleanupError => {
+          console.error('Failed to roll back replacement upload:', cleanupError);
+        });
+      }
       return unifiedResponse(false, 'Failed to update certificate');
     }
   }
@@ -73,15 +123,10 @@ export class CertificateService {
     }
 
     try {
-      // Delete the file from disk if it exists
-      if (existing.fileUrl) {
-        const filePath = path.resolve(existing.fileUrl);
-        if (await fs.pathExists(filePath)) {
-          await fs.remove(filePath);
-        }
-      }
-
       await this.certificateRepository.delete(id);
+      await this.fileStorageService.delete(existing.fileUrl).catch(cleanupError => {
+        console.error('Failed to delete certificate file:', cleanupError);
+      });
       return unifiedResponse(true, SUCCESS.CERTIFICATE_DELETED);
     } catch (error) {
       return unifiedResponse(false, 'Failed to delete certificate');
@@ -89,24 +134,23 @@ export class CertificateService {
   }
 
   async viewCertificateFile(seafarerCode: string, nomorSertifikat: string) {
-    const certificate = await this.certificateRepository.findBySeafarerCodeAndNomor(seafarerCode, nomorSertifikat);
+    const certificate = await this.certificateRepository.findBySeafarerCodeAndNomor(
+      seafarerCode,
+      nomorSertifikat,
+    );
     if (!certificate) {
       return { success: false, message: ERROR.CERTIFICATE_NOT_FOUND };
     }
 
-    // Check if fileUrl is an external URL (from SPIL)
-    if (certificate.fileUrl.startsWith('http://') || certificate.fileUrl.startsWith('https://')) {
-      return { success: true, isExternal: true, externalUrl: certificate.fileUrl, certificate };
+    try {
+      const file = await this.fileStorageService.read(certificate.fileUrl);
+      return { success: true, file, certificate };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Certificate file could not be read',
+      };
     }
-
-    // Local file path
-    const filePath = path.resolve(certificate.fileUrl);
-    const exists = await fs.pathExists(filePath);
-    if (!exists) {
-      return { success: false, message: 'Certificate file not found on server' };
-    }
-
-    return { success: true, isExternal: false, filePath, certificate };
   }
 
   async downloadCertificateFile(seafarerCode: string, nomorSertifikat: string) {
@@ -150,11 +194,11 @@ export class CertificateService {
           continue;
         }
 
-        const data = await response.json() as {
+        const data = (await response.json()) as {
           success: boolean;
-          data?: { 
-            training_name: string; 
-            confidence: number; 
+          data?: {
+            training_name: string;
+            confidence: number;
             status: string;
             certificate_id: string;
             confidence_id: number;
@@ -205,5 +249,20 @@ export class CertificateService {
       created.push(certificate);
     }
     return unifiedResponse(true, SUCCESS.CERTIFICATE_CREATED, created);
+  }
+
+  private createFileName(
+    certificateName: string,
+    nomorSertifikat: string,
+    originalName: string,
+  ): string {
+    const extension = path.extname(originalName).toLowerCase();
+    const baseName = `${certificateName}-${nomorSertifikat}`
+      .replace(/[\\/:*?"<>|]+/g, '-')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 180);
+
+    return `${baseName || 'certificate'}${extension}`;
   }
 }

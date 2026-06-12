@@ -38,6 +38,11 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       WHITE_LIST_URLS: ${WHITE_LIST_URLS:-http://localhost:3000,http://localhost:5173,http://localhost:5176,http://localhost:5000,http://localhost:8080}
       OCR_SERVICE_URL: http://ocr:8000
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REFRESH_TOKEN: ${GOOGLE_REFRESH_TOKEN}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:8080/oauth2callback}
+      GDRIVE_FOLDER_ID: ${GDRIVE_FOLDER_ID}
       SSO_FRONTEND_URL: ${SSO_FRONTEND_URL:-http://localhost:5173}
       SSO_BASE_URL: ${SSO_BASE_URL:-http://host.docker.internal:5000}
       SSO_CLIENT_ID: ${SSO_CLIENT_ID}

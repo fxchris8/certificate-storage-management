@@ -1,152 +1,106 @@
-version: '3.8'
-
-# ============================================================
-# PRODUCTION Docker Compose
-# Usage: docker-compose -f docker-compose.prod.yml up -d
-# Requirements: create .env from .env.production.example first
-# ============================================================
-
 services:
-
-  # ----------------------------------------------------------
-  # PostgreSQL Database
-  # Not exposed to host — internal network only
-  # ----------------------------------------------------------
-  postgres:
-    image: postgres:16-alpine
-    container_name: cert-db
-    restart: always
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - internal
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    deploy:
-      resources:
-        limits:
-          memory: 512m
-
-  # ----------------------------------------------------------
-  # Backend API (Express + Prisma)
-  # Not exposed to host — traffic via Nginx
-  # ----------------------------------------------------------
   backend:
+    container_name: certificate_storage_management_backend_prod
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: cert-backend
+    env_file: .env
     restart: always
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${NODE_ENV:-production}
       PORT: 5000
-      LOG_LEVEL: ${LOG_LEVEL:-warn}
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      SHADOW_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}_shadow
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@${POSTGRES_HOST:?Set POSTGRES_HOST in .env}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-certificate_db}
+      SHADOW_DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@${POSTGRES_HOST:?Set POSTGRES_HOST in .env}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-certificate_db}_shadow
       JWT_SECRET: ${JWT_SECRET}
-      WHITE_LIST_URLS: ${WHITE_LIST_URLS}
-      OCR_SERVICE_URL: http://ocr:8000
+      WHITE_LIST_URLS: ${WHITE_LIST_URLS:-https://pe.spil.co.id,http://localhost:3000,http://localhost:5173}
+      GDRIVE_FOLDER_ID: ${GDRIVE_FOLDER_ID}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REFRESH_TOKEN: ${GOOGLE_REFRESH_TOKEN}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:8080/oauth2callback}
+      OCR_SERVICE_URL: ${OCR_SERVICE_URL:-http://ocr:8000}
     depends_on:
-      postgres:
+      ocr:
         condition: service_healthy
+    ports:
+      - "${BACKEND_PORT:-5000}:5000"
     networks:
-      - internal
-    volumes:
-      - certificate_uploads:/app/uploads
-    deploy:
-      resources:
-        limits:
-          memory: 512m
+      - traefik-net
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5000/heartbeat', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:5000/heartbeat', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))",
+        ]
       interval: 30s
-      timeout: 5s
+      timeout: 3s
       retries: 3
       start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-net"
+      - "traefik.http.routers.certificate-storage-management-backend.rule=Host(`${TRAEFIK_HOST:-pe.spil.co.id}`) && PathPrefix(`${BACKEND_PATH_PREFIX:-/certificate-storage-management-api}`)"
+      - "traefik.http.routers.certificate-storage-management-backend.entrypoints=websecure"
+      - "traefik.http.routers.certificate-storage-management-backend.tls=true"
+      - "traefik.http.routers.certificate-storage-management-backend.priority=200"
+      - "traefik.http.routers.certificate-storage-management-backend.middlewares=strip-certificate-storage-management-api"
+      - "traefik.http.middlewares.strip-certificate-storage-management-api.stripprefix.prefixes=${BACKEND_PATH_PREFIX:-/certificate-storage-management-api}"
+      - "traefik.http.services.certificate-storage-management-backend.loadbalancer.server.port=5000"
 
-  # ----------------------------------------------------------
-  # OCR Service (Python/FastAPI)
-  # Not exposed to host — internal only
-  # ----------------------------------------------------------
-  ocr:
-    build:
-      context: ./ocr
-      dockerfile: Dockerfile
-    container_name: cert-ocr
-    restart: always
-    environment:
-      PYTHONUNBUFFERED: "1"
-    networks:
-      - internal
-    volumes:
-      - ocr_results:/app/results
-    deploy:
-      resources:
-        limits:
-          memory: 1g
-
-  # ----------------------------------------------------------
-  # Frontend (React + Vite → Nginx static)
-  # Not exposed to host — traffic via Nginx reverse proxy
-  # ----------------------------------------------------------
   frontend:
+    container_name: certificate_storage_management_frontend_prod
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ${VITE_API_URL}
-    container_name: cert-frontend
+        VITE_API_URL: ${VITE_API_URL:-https://pe.spil.co.id/certificate-storage-management-api}
+        VITE_BASE_PATH: ${VITE_BASE_PATH:-/certificate-storage-management/}
+    env_file: .env
     restart: always
-    networks:
-      - internal
+    environment:
+      NODE_ENV: production
+      VITE_API_URL: ${VITE_API_URL:-https://pe.spil.co.id/certificate-storage-management-api}
+      VITE_BASE_PATH: ${VITE_BASE_PATH:-/certificate-storage-management/}
     depends_on:
       backend:
         condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          memory: 128m
-
-  # ----------------------------------------------------------
-  # Nginx — single public entry point
-  # Reverse proxy: / → frontend, /api → backend
-  # ----------------------------------------------------------
-  nginx:
-    image: nginx:1.27-alpine
-    container_name: cert-nginx
-    restart: always
     ports:
-      - "${HTTP_PORT:-80}:80"
-    volumes:
-      - ./nginx/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
-    depends_on:
-      - frontend
-      - backend
+      - "${FRONTEND_PORT:-3000}:80"
     networks:
-      - internal
-    deploy:
-      resources:
-        limits:
-          memory: 64m
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
+      - traefik-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-net"
+      - "traefik.http.routers.certificate-storage-management-frontend.rule=Host(`${TRAEFIK_HOST:-pe.spil.co.id}`) && PathPrefix(`${FRONTEND_PATH_PREFIX:-/certificate-storage-management}`)"
+      - "traefik.http.routers.certificate-storage-management-frontend.entrypoints=websecure"
+      - "traefik.http.routers.certificate-storage-management-frontend.tls=true"
+      - "traefik.http.routers.certificate-storage-management-frontend.priority=100"
+      - "traefik.http.routers.certificate-storage-management-frontend.middlewares=strip-certificate-storage-management"
+      - "traefik.http.middlewares.strip-certificate-storage-management.stripprefix.prefixes=${FRONTEND_PATH_PREFIX:-/certificate-storage-management}"
+      - "traefik.http.services.certificate-storage-management-frontend.loadbalancer.server.port=80"
+
+  ocr:
+    container_name: certificate_storage_management_ocr_prod
+    build:
+      context: ./ocr
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      PYTHONUNBUFFERED: 1
+      OCR_LANG: ${OCR_LANG:-en}
+      OCR_USE_GPU: ${OCR_USE_GPU:-false}
+    expose:
+      - "8000"
+    networks:
+      - traefik-net
+    volumes:
+      - ./ocr/samples:/app/samples
+      - ./ocr/results:/app/results
 
 networks:
-  internal:
-    driver: bridge
-
-volumes:
-  postgres_data:
-  certificate_uploads:
-  ocr_results:
+  traefik-net:
+    name: traefik-net
+    external: true

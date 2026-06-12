@@ -1,8 +1,11 @@
 import { NextFunction, Request, Response } from 'express';
-import path from 'path';
 
 import { CertificateService } from '../services/certificate.service';
-import { CreateCertificateInput, UpdateCertificateInput, BulkCreateItem } from '../types/certificate.types';
+import {
+  BulkCreateItem,
+  CreateCertificateInput,
+  UpdateCertificateInput,
+} from '../types/certificate.types';
 
 export class CertificateController {
   private certificateService: CertificateService;
@@ -11,14 +14,22 @@ export class CertificateController {
     this.certificateService = certificateService;
   }
 
-  getCertificatesBySeafarerCode = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  getCertificatesBySeafarerCode = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const { seafarerCode } = req.params;
       const page = req.query.page ? parseInt(req.query.page as string) : 1;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
       const search = req.query.search as string | undefined;
 
-      const result = await this.certificateService.getCertificatesBySeafarerCode(seafarerCode, { page, limit, search });
+      const result = await this.certificateService.getCertificatesBySeafarerCode(seafarerCode, {
+        page,
+        limit,
+        search,
+      });
       res.status(result.success ? 200 : 404).json(result);
     } catch (error) {
       next(error);
@@ -35,11 +46,7 @@ export class CertificateController {
     }
   };
 
-  createCertificate = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
+  createCertificate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const file = req.file;
       if (!file) {
@@ -48,16 +55,14 @@ export class CertificateController {
       }
 
       const { personId, certificateName, nomorSertifikat } = req.body;
-      const fileUrl = file.path;
 
       const data: CreateCertificateInput = {
         personId,
         certificateName,
         nomorSertifikat,
-        fileUrl,
       };
 
-      const result = await this.certificateService.createCertificate(data);
+      const result = await this.certificateService.createCertificate(data, file);
       res.status(result.success ? 201 : 400).json(result);
     } catch (error) {
       next(error);
@@ -75,16 +80,19 @@ export class CertificateController {
       const updateData: UpdateCertificateInput = {};
       if (certificateName) updateData.certificateName = certificateName;
       if (nomorSertifikat) updateData.nomorSertifikat = nomorSertifikat;
-      if (req.file) updateData.fileUrl = req.file.path;
 
-      const result = await this.certificateService.updateCertificate(id, updateData);
+      const result = await this.certificateService.updateCertificate(id, updateData, req.file);
       res.status(result.success ? 200 : 400).json(result);
     } catch (error) {
       next(error);
     }
   };
 
-  deleteCertificate = async (req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> => {
+  deleteCertificate = async (
+    req: Request<{ id: string }>,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const { id } = req.params;
       const result = await this.certificateService.deleteCertificate(id);
@@ -97,99 +105,54 @@ export class CertificateController {
   viewCertificateFile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { seafarerCode, nomorSertifikat } = req.params;
-      const result = await this.certificateService.viewCertificateFile(seafarerCode, nomorSertifikat);
+      const result = await this.certificateService.viewCertificateFile(
+        seafarerCode,
+        nomorSertifikat,
+      );
 
       if (!result.success) {
         res.status(404).json({ success: false, message: result.message });
         return;
       }
 
-      // Handle external URLs (from SPIL) - proxy the request
-      if (result.isExternal && result.externalUrl) {
-        try {
-          const response = await fetch(result.externalUrl);
-          if (!response.ok) {
-            res.status(404).json({ success: false, message: 'External file not found' });
-            return;
-          }
-          
-          const contentType = response.headers.get('content-type') || 'application/octet-stream';
-          const buffer = await response.arrayBuffer();
-          
-          // Override Helmet security headers to allow iframe embedding
-          res.removeHeader('X-Frame-Options');
-          res.removeHeader('Content-Security-Policy');
-          res.removeHeader('Cross-Origin-Resource-Policy');
-          res.setHeader('Content-Security-Policy', "frame-ancestors *");
-          res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-
-          res.setHeader('Content-Type', contentType);
-          res.send(Buffer.from(buffer));
-        } catch (error) {
-          res.status(500).json({ success: false, message: 'Failed to fetch external file' });
-        }
-        return;
-      }
-
-      // Handle local files
       // Override Helmet security headers to allow iframe embedding
       res.removeHeader('X-Frame-Options');
       res.removeHeader('Content-Security-Policy');
       res.removeHeader('Cross-Origin-Resource-Policy');
-      res.setHeader('Content-Security-Policy', "frame-ancestors *");
+      res.setHeader('Content-Security-Policy', 'frame-ancestors *');
       res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
 
-      // Override Helmet security headers to allow iframe embedding
-      res.removeHeader('X-Frame-Options');
-      res.removeHeader('Content-Security-Policy');
-      res.removeHeader('Cross-Origin-Resource-Policy');
-      res.setHeader('Content-Security-Policy', "frame-ancestors *");
-      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-
-      res.sendFile(result.filePath!);
+      res.setHeader('Content-Type', result.file!.contentType);
+      res.send(result.file!.buffer);
     } catch (error) {
       next(error);
     }
   };
 
-  downloadCertificateFile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  downloadCertificateFile = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const { seafarerCode, nomorSertifikat } = req.params;
-      const result = await this.certificateService.downloadCertificateFile(seafarerCode, nomorSertifikat);
+      const result = await this.certificateService.downloadCertificateFile(
+        seafarerCode,
+        nomorSertifikat,
+      );
 
       if (!result.success) {
         res.status(404).json({ success: false, message: result.message });
         return;
       }
 
-      // Handle external URLs (from SPIL) - proxy the request
-      if (result.isExternal && result.externalUrl) {
-        try {
-          const response = await fetch(result.externalUrl);
-          if (!response.ok) {
-            res.status(404).json({ success: false, message: 'External file not found' });
-            return;
-          }
-          
-          const contentType = response.headers.get('content-type') || 'application/octet-stream';
-          const buffer = await response.arrayBuffer();
-          
-          // Generate filename from certificate name or nomor sertifikat
-          const ext = contentType.includes('pdf') ? 'pdf' : contentType.includes('png') ? 'png' : 'jpg';
-          const filename = `${result.certificate?.certificateName || nomorSertifikat}.${ext}`;
-          
-          res.setHeader('Content-Type', contentType);
-          res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-          res.send(Buffer.from(buffer));
-        } catch (error) {
-          res.status(500).json({ success: false, message: 'Failed to fetch external file' });
-        }
-        return;
-      }
+      const extension = this.getExtensionForContentType(result.file!.contentType);
+      const rawFileName = result.certificate?.certificateName || nomorSertifikat;
+      const fileName = `${rawFileName.replace(/["\r\n]/g, '_')}.${extension}`;
 
-      // Handle local files
-      const fileName = path.basename(result.filePath!);
-      res.download(result.filePath!, fileName);
+      res.setHeader('Content-Type', result.file!.contentType);
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.send(result.file!.buffer);
     } catch (error) {
       next(error);
     }
@@ -210,7 +173,11 @@ export class CertificateController {
     }
   };
 
-  bulkCreateCertificates = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  bulkCreateCertificates = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const { items } = req.body as { items: BulkCreateItem[] };
       if (!items || items.length === 0) {
@@ -224,4 +191,11 @@ export class CertificateController {
       next(error);
     }
   };
+
+  private getExtensionForContentType(contentType: string): string {
+    if (contentType.includes('pdf')) return 'pdf';
+    if (contentType.includes('png')) return 'png';
+    if (contentType.includes('jpeg') || contentType.includes('jpg')) return 'jpg';
+    return 'bin';
+  }
 }
