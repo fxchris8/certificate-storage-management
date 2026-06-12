@@ -13,6 +13,7 @@ coverage
 *.md
 .eslintrc*
 .prettierrc*
+!.prettierrc.json
 .editorconfig
 __tests__
 *.test.ts

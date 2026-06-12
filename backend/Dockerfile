@@ -7,7 +7,8 @@ WORKDIR /app
 COPY package*.json ./
 COPY tsconfig.json ./
 COPY prisma ./prisma/
-
+COPY .prettierrc.json ./
+COPY eslint.config.js ./
 # Install dependencies
 RUN npm ci
 
