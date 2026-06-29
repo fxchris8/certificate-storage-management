@@ -57,13 +57,13 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ${VITE_API_URL:-https://pe.spil.co.id/certificate-storage-management-api}
+        VITE_API_URL: ${VITE_API_URL:-https://pe.spil.co.id/certificate-storage-management-api/api}
         VITE_BASE_PATH: ${VITE_BASE_PATH:-/certificate-storage-management/}
     env_file: .env
     restart: always
     environment:
       NODE_ENV: production
-      VITE_API_URL: ${VITE_API_URL:-https://pe.spil.co.id/certificate-storage-management-api}
+      VITE_API_URL: ${VITE_API_URL:-https://pe.spil.co.id/certificate-storage-management-api/api}
       VITE_BASE_PATH: ${VITE_BASE_PATH:-/certificate-storage-management/}
     depends_on:
       backend:
