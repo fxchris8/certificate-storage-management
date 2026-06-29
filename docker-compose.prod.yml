@@ -20,6 +20,7 @@ services:
       GOOGLE_REFRESH_TOKEN: ${GOOGLE_REFRESH_TOKEN}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:8080/oauth2callback}
       OCR_SERVICE_URL: ${OCR_SERVICE_URL:-http://ocr:8000}
+      FRONTEND_URL: ${FRONTEND_URL:-https://pe.spil.co.id/certificate-storage-management}
     depends_on:
       ocr:
         condition: service_healthy

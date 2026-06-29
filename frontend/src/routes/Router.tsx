@@ -44,6 +44,13 @@ const Router = [
   },
 ];
 
-const router = createBrowserRouter(Router);
+let basename = import.meta.env.VITE_BASE_PATH || "/";
+if (basename !== "/" && basename.endsWith("/")) {
+  basename = basename.slice(0, -1);
+}
+
+const router = createBrowserRouter(Router, {
+  basename,
+});
 
 export default router;
