@@ -22,3 +22,18 @@ export const setToken = (token: string) => {
 export const removeToken = () => {
   cookies.remove(COOKIE_NAME, { path: "/" });
 };
+
+// Crew Login
+const CREW_COOKIE_NAME = "@crew-cert-storage-token";
+
+export const getCrewToken = (): string => {
+  return cookies.get(CREW_COOKIE_NAME);
+};
+
+export const setCrewToken = (token: string) => {
+  cookies.set(CREW_COOKIE_NAME, token, COOKIE_OPTIONS);
+};
+
+export const removeCrewToken = () => {
+  cookies.remove(CREW_COOKIE_NAME, { path: "/" });
+};
