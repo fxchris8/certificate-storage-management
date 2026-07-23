@@ -11,6 +11,7 @@ const secret: Secret = env.JWT_SECRET as string;
 interface AuthPayload {
   userId: string;
   username: string;
+  tokenType?: string;
 }
 
 // Augment the Express Request object to include custom properties
@@ -47,6 +48,12 @@ class AuthService {
 
     try {
       const decodedToken = jwt.verify(token, this.secret) as AuthPayload;
+      
+      if (decodedToken.tokenType !== 'user') {
+        res.status(401).json(unifiedResponse(false, 'Invalid token type'));
+        return;
+      }
+
       req.userId = decodedToken.userId;
       req.username = decodedToken.username;
 

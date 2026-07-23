@@ -10,6 +10,14 @@ import { CertificatesPage } from "@/features/dashboard/pages/CertificatesPage";
 import { ExternalSubmissionsPage } from "@/features/external-submission/pages/ExternalSubmissionsPage";
 import { ExternalSubmissionDetailPage } from "@/features/external-submission/pages/ExternalSubmissionDetailPage";
 
+// Crew feature imports
+import CrewPublicRoute from "@/components/CrewPublicRoute";
+import CrewProtectedRoute from "@/components/CrewProtectedRoute";
+import { CrewLoginPage } from "@/features/crew/pages/CrewLoginPage";
+import { CrewRegisterPage } from "@/features/crew/pages/CrewRegisterPage";
+import { CrewLayout } from "@/layouts/CrewLayout";
+import { CrewSubmissionsPage } from "@/features/crew/pages/CrewSubmissionsPage";
+
 const Router = [
   {
     path: "/",
@@ -35,6 +43,26 @@ const Router = [
             { path: "external-submissions", element: <ExternalSubmissionsPage /> },
             { path: "external-submissions/:id", element: <ExternalSubmissionDetailPage /> },
         ]
+      },
+    ],
+  },
+  {
+    path: "/crew",
+    element: <CrewPublicRoute />,
+    children: [
+      { path: "login", element: <CrewLoginPage /> },
+      { path: "register", element: <CrewRegisterPage /> },
+    ],
+  },
+  {
+    path: "/crew",
+    element: <CrewProtectedRoute />,
+    children: [
+      {
+        element: <CrewLayout />,
+        children: [
+          { index: true, element: <CrewSubmissionsPage /> },
+        ],
       },
     ],
   },

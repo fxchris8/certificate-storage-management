@@ -57,11 +57,15 @@ import { Person } from "@/features/person/types/person.types"
 const seafarerSchema = z.object({
   name: z.string().min(1, "Full Name is required"),
   seafarercode: z.string().min(1, "Seafarer Code is required"),
+  password: z.string().optional().refine(val => !val || val.length >= 8, "Password must be at least 8 characters if provided"),
 })
+
+import { useResetCrewPassword } from "@/features/person/_hooks/useResetCrewPassword"
 
 type SeafarerFormValues = z.infer<typeof seafarerSchema>
 
 export function DashboardPage() {
+  const { mutateAsync: resetPassword, isPending: isResetting } = useResetCrewPassword()
   const { data: stats } = useGetStats()
   const { mutate: createPerson, isPending: isCreating } = usePostPerson()
   const { mutate: updatePerson, isPending: isUpdating } = usePutPerson()
@@ -99,6 +103,7 @@ export function DashboardPage() {
     defaultValues: {
       name: "",
       seafarercode: "",
+      password: "",
     },
   })
   const navigate = useNavigate()
@@ -114,6 +119,7 @@ export function DashboardPage() {
     form.reset({
       name: "",
       seafarercode: "",
+      password: "",
     })
     setIsEditOpen(true)
   }
@@ -123,6 +129,7 @@ export function DashboardPage() {
     form.reset({
       name: person.name,
       seafarercode: person.seafarercode,
+      password: "",
     })
     setIsEditOpen(true)
   }
@@ -132,7 +139,7 @@ export function DashboardPage() {
     setIsDeleteOpen(true)
   }
 
-  const onSubmit = (data: SeafarerFormValues) => {
+  const onSubmit = async (data: SeafarerFormValues) => {
     if (selectedPerson) {
       updatePerson({
         id: selectedPerson.id,
@@ -141,14 +148,32 @@ export function DashboardPage() {
           seafarercode: data.seafarercode,
         }
       }, {
-        onSuccess: () => setIsEditOpen(false)
+        onSuccess: async () => {
+          if (data.password) {
+            try {
+              await resetPassword({ personId: selectedPerson.id, newPassword: data.password })
+            } catch (error) {
+              console.error(error)
+            }
+          }
+          setIsEditOpen(false)
+        }
       })
     } else {
       createPerson({
         name: data.name,
         seafarercode: data.seafarercode,
       }, {
-        onSuccess: () => setIsEditOpen(false)
+        onSuccess: async (createdPerson: Person) => {
+          if (data.password && createdPerson.id) {
+            try {
+              await resetPassword({ personId: createdPerson.id, newPassword: data.password })
+            } catch (error) {
+              console.error(error)
+            }
+          }
+          setIsEditOpen(false)
+        }
       })
     }
   }
@@ -413,6 +438,27 @@ export function DashboardPage() {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Password {selectedPerson && "(Leave blank to keep current)"}
+                    </FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="password" 
+                        placeholder="Enter password" 
+                        className="h-11 bg-white border-zinc-200 transition-all"
+                        {...field} 
+                        value={field.value || ""} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <DialogFooter className="flex flex-row justify-end gap-3 pt-2">
                  <Button 
@@ -425,10 +471,10 @@ export function DashboardPage() {
                  </Button>
                 <Button 
                   type="submit" 
-                  disabled={isCreating || isUpdating || !form.formState.isValid}
+                  disabled={isCreating || isUpdating || isResetting || !form.formState.isValid}
                   className="h-11 px-6 bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/20"
                 >
-                    {(isCreating || isUpdating) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {(isCreating || isUpdating || isResetting) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {selectedPerson ? "Save Changes" : "Save Seafarer"}
                 </Button>
               </DialogFooter>

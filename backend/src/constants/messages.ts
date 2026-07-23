@@ -14,6 +14,12 @@ export const SUCCESS = {
   EXTERNAL_SUBMISSION_FOUND: 'External submission found',
   EXTERNAL_SUBMISSION_APPROVED: 'Submission approved successfully',
   EXTERNAL_SUBMISSION_REJECTED: 'Submission rejected successfully',
+  CREW_REGISTERED: 'Crew registered successfully',
+  CREW_LOGIN_SUCCESSFUL: 'Crew login successful',
+  CREW_SUBMISSION_FOUND: 'Crew submission found',
+  CREW_SUBMISSION_CREATED: 'Crew submission created successfully',
+  CREW_SUBMISSION_DELETED: 'Crew submission deleted successfully',
+  CREW_PASSWORD_RESET: 'Crew password reset successfully',
 };
 
 export const ERROR = {
@@ -37,4 +43,10 @@ export const ERROR = {
   EXTERNAL_SUBMISSION_NOT_FOUND: 'External submission not found',
   UNAUTHORIZED_API_KEY: 'Unauthorized: Invalid API Key',
   INVALID_SUBMISSION_STATUS: 'Invalid submission status',
+  CREW_NOT_FOUND: 'Crew credential not found',
+  CREW_ALREADY_REGISTERED: 'Seafarer code already registered, please login',
+  CREW_DATA_MISMATCH: 'Data does not match — seafarer code and name combination is incorrect',
+  CREW_SUBMISSION_NOT_FOUND: 'Crew submission not found',
+  CREW_SUBMISSION_NOT_PENDING: 'Only PENDING submissions can be deleted',
+  CREW_SUBMISSION_FORBIDDEN: 'You are not authorized to delete this submission',
 };
