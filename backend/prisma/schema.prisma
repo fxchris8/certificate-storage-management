@@ -25,11 +25,12 @@ model User {
 model Person {
   id                  String                @id @default(uuid()) @db.Uuid
   name                String
-  seafarercode        String
+  seafarercode        String                @unique
   createdAt           DateTime              @default(now()) @map("created_at")
   updatedAt           DateTime              @updatedAt @map("updated_at")
   certificates        Certificate[]
   externalSubmissions ExternalSubmission[]
+  crewCredential      CrewCredential?
 
   @@map("persons")
 }
@@ -68,4 +69,16 @@ model ExternalSubmission {
   person                Person?  @relation(fields: [personId], references: [id])
 
   @@map("external_submissions")
+}
+
+model CrewCredential {
+  id           String   @id @default(uuid()) @db.Uuid
+  personId     String   @unique @map("person_id") @db.Uuid
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  person       Person   @relation(fields: [personId], references: [id])
+
+  @@map("crew_credentials")
 }
