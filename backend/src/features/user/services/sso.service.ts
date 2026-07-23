@@ -196,7 +196,7 @@ export class SsoService {
     const localUser = await this.findOrCreateLocalUser(ssoUser);
 
     // Issue our own JWT for the certificate app
-    const token = generateToken(localUser.id, 'user');
+    const token = generateToken({ userId: localUser.id, tokenType: 'user', role: 'user' });
 
     return unifiedResponse(true, 'Login SSO berhasil', {
       token,

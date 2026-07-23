@@ -5,7 +5,7 @@ import { CreateExternalSubmissionInput } from '../types/external-submission.type
 export class ExternalSubmissionRepository {
   constructor(private prisma: PrismaClient) {}
 
-  async create(data: CreateExternalSubmissionInput): Promise<ExternalSubmission> {
+  async create(data: CreateExternalSubmissionInput & { personId?: string }): Promise<ExternalSubmission> {
     const person = await this.prisma.person.findFirst({
       where: { seafarercode: data.seafarerCode },
     });
@@ -18,7 +18,7 @@ export class ExternalSubmissionRepository {
         certificateName: data.certificateName,
         nomorSertifikat: data.nomorSertifikat,
         externalFileUrl: data.externalFileUrl,
-        personId: person?.id,
+        personId: data.personId ?? person?.id,
       },
     });
   }
@@ -28,10 +28,14 @@ export class ExternalSubmissionRepository {
     limit?: number,
     status?: string,
     search?: string,
+    personId?: string,
   ): Promise<ExternalSubmission[]> {
     const where: any = {};
     if (status) {
       where.status = status;
+    }
+    if (personId) {
+      where.personId = personId;
     }
     if (search) {
       where.OR = [
@@ -57,10 +61,13 @@ export class ExternalSubmissionRepository {
     });
   }
 
-  async count(status?: string, search?: string): Promise<number> {
+  async count(status?: string, search?: string, personId?: string): Promise<number> {
     const where: any = {};
     if (status) {
       where.status = status;
+    }
+    if (personId) {
+      where.personId = personId;
     }
     if (search) {
       where.OR = [
@@ -103,6 +110,12 @@ export class ExternalSubmissionRepository {
         reviewedAt: new Date(),
         ...(personId && { personId }),
       },
+    });
+  }
+
+  async deleteById(id: string): Promise<ExternalSubmission> {
+    return this.prisma.externalSubmission.delete({
+      where: { id },
     });
   }
 }

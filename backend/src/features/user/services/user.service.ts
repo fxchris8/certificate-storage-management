@@ -48,7 +48,7 @@ export class UserService {
       return unifiedResponse(false, 'Invalid credentials');
     }
 
-    const token = generateToken(user.id, 'user');
+    const token = generateToken({ userId: user.id, tokenType: 'user', role: 'user' });
     return unifiedResponse(true, SUCCESS.LOGIN_SUCCESSFUL, { token, user: { id: user.id, username: user.username } });
   }
 
@@ -66,7 +66,7 @@ export class UserService {
       passwordHash: hashedPassword,
     });
 
-    const token = generateToken(newUser.id, 'user');
+    const token = generateToken({ userId: newUser.id, tokenType: 'user', role: 'user' });
     return unifiedResponse(true, SUCCESS.REGISTRATION_SUCCESSFUL, { token, user: newUser });
   }
 
