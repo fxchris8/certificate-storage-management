@@ -26,11 +26,30 @@ export class ExternalSubmissionController {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
       const status = req.query.status as string | undefined;
       const search = req.query.search as string | undefined;
+      const seafarerCode = req.query.seafarerCode as string | undefined;
 
       const result = await this.externalSubmissionService.getSubmissions(
         page,
         limit,
         status,
+        search,
+        seafarerCode,
+      );
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  getGroupedSeafarers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const page = req.query.page ? parseInt(req.query.page as string) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const search = req.query.search as string | undefined;
+
+      const result = await this.externalSubmissionService.getGroupedSeafarers(
+        page,
+        limit,
         search,
       );
       res.status(200).json(result);

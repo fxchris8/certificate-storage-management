@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGetExternalSubmissions } from '../_hooks/useGetExternalSubmissions';
+import { useGetExternalSubmissionsGrouped, GroupedSeafarer } from '../_hooks/useGetExternalSubmissionsGrouped';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,31 +12,35 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { FileText, Eye, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FileText, Eye, Search, ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const LIMIT = 10;
 
 export function ExternalSubmissionsPage() {
   const navigate = useNavigate();
-  const [statusFilter, setStatusFilter] = useState<string>('');
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
 
-  const { data, isLoading } = useGetExternalSubmissions(
+  const { data, isLoading, isError } = useGetExternalSubmissionsGrouped(
     page,
     LIMIT,
-    statusFilter || undefined,
     search || undefined
   );
 
-  const submissions = data?.submissions ?? [];
+  const groupedSeafarers = data?.submissions ?? [];
   const pagination = data?.pagination;
 
-  // Reset to page 1 when filter or search changes
+  // Reset to page 1 when search changes
   useEffect(() => {
     setPage(1);
-  }, [statusFilter, search]);
+  }, [search]);
 
   // Debounce search input
   useEffect(() => {
@@ -46,123 +50,102 @@ export function ExternalSubmissionsPage() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  const getStatusBadge = (status: string) => {
-    const styles = {
-      PENDING: 'bg-yellow-100 text-yellow-800',
-      APPROVED: 'bg-green-100 text-green-800',
-      REJECTED: 'bg-red-100 text-red-800',
-    };
-    return styles[status as keyof typeof styles] || 'bg-gray-100 text-gray-800';
-  };
-
   const totalPages = pagination?.totalPages ?? 1;
   const totalCount = pagination?.totalCount ?? 0;
+  const startIndex = (page - 1) * LIMIT;
+
+  const handleRowClick = (seafarerCode: string) => {
+    navigate(`/dashboard/external-submissions/seafarer/${seafarerCode}`);
+  };
 
   return (
-    <div className="p-4 md:p-8 space-y-6">
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+    <div className="space-y-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-900">External Submissions</h1>
-          <p className="text-sm text-zinc-500 mt-1">Review certificate submissions from SPIL</p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant={statusFilter === '' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setStatusFilter('')}
-          >
-            All
-          </Button>
-          <Button
-            variant={statusFilter === 'PENDING' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setStatusFilter('PENDING')}
-          >
-            Pending
-          </Button>
-          <Button
-            variant={statusFilter === 'APPROVED' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setStatusFilter('APPROVED')}
-          >
-            Approved
-          </Button>
-          <Button
-            variant={statusFilter === 'REJECTED' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setStatusFilter('REJECTED')}
-          >
-            Rejected
-          </Button>
+          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">External Submissions</h1>
+          <p className="mt-1 text-zinc-500 dark:text-zinc-400">Review certificate submissions grouped by seafarer</p>
         </div>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-        <Input
-          placeholder="Search by code, name, certificate, or nomor..."
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          className="pl-9"
-        />
-      </div>
+      <Card className="border border-zinc-200 shadow-sm dark:border-zinc-800 bg-white dark:bg-zinc-950">
+        <div className="p-4 border-b border-zinc-200 dark:border-zinc-800">
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+            <Input
+              placeholder="Search by code or name..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="pl-9 h-10 bg-white border-zinc-200"
+            />
+          </div>
+        </div>
 
-      <Card>
         {isLoading ? (
           <div className="p-8 text-center text-zinc-500">Loading...</div>
-        ) : submissions.length === 0 ? (
+        ) : isError ? (
+          <div className="p-8 text-center text-red-500">Failed to load data.</div>
+        ) : groupedSeafarers.length === 0 ? (
           <div className="p-8 text-center">
             <FileText className="mx-auto h-12 w-12 text-zinc-400" />
-            <h3 className="mt-2 text-sm font-medium text-zinc-900">No submissions</h3>
+            <h3 className="mt-2 text-sm font-medium text-zinc-900">No submissions found</h3>
             <p className="mt-1 text-sm text-zinc-500">
               {search
-                ? 'No submissions match your search.'
-                : 'No submissions found with the selected filter.'}
+                ? 'No seafarers match your search.'
+                : 'No external submissions are available.'}
             </p>
           </div>
         ) : (
           <>
             <Table>
-              <TableHeader>
+              <TableHeader className="bg-zinc-50 dark:bg-zinc-900">
                 <TableRow>
-                  <TableHead>Seafarer Code</TableHead>
-                  <TableHead>Seafarer Name</TableHead>
-                  <TableHead>Certificate Name</TableHead>
-                  <TableHead>Nomor Sertifikat</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Submitted At</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="w-[80px] font-semibold">No</TableHead>
+                  <TableHead className="font-semibold">Seafarer Code</TableHead>
+                  <TableHead className="font-semibold">Seafarer Name</TableHead>
+                  <TableHead className="font-semibold text-center">Pending</TableHead>
+                  <TableHead className="text-right font-semibold">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {submissions.map((submission) => (
-                  <TableRow key={submission.id}>
-                    <TableCell className="font-medium">{submission.seafarerCode}</TableCell>
-                    <TableCell>{submission.seafarerName}</TableCell>
-                    <TableCell>{submission.certificateName}</TableCell>
-                    <TableCell>{submission.nomorSertifikat}</TableCell>
+                {groupedSeafarers.map((seafarer: GroupedSeafarer, index: number) => (
+                  <TableRow 
+                    key={seafarer.seafarerCode}
+                    onClick={() => handleRowClick(seafarer.seafarerCode)}
+                    className="cursor-pointer hover:bg-zinc-50/50"
+                  >
+                    <TableCell className="font-medium text-zinc-500">{startIndex + index + 1}</TableCell>
                     <TableCell>
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusBadge(submission.status)}`}>
-                        {submission.status}
+                      <span className="inline-flex items-center rounded-md bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-600 ring-1 ring-inset ring-zinc-500/10 dark:bg-zinc-900 dark:text-zinc-400">
+                        {seafarer.seafarerCode}
                       </span>
                     </TableCell>
-                    <TableCell>
-                      {new Date(submission.createdAt).toLocaleDateString('id-ID', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                      })}
+                    <TableCell className="font-medium">{seafarer.seafarerName}</TableCell>
+                    <TableCell className="text-center">
+                      {seafarer.pendingSubmissions > 0 ? (
+                        <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">
+                          {seafarer.pendingSubmissions} Pending
+                        </span>
+                      ) : (
+                        <span className="text-zinc-400 text-sm">0</span>
+                      )}
                     </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => navigate(`/dashboard/external-submissions/${submission.id}`)}
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        Review
-                      </Button>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-zinc-400 hover:text-zinc-900">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40">
+                          <DropdownMenuItem 
+                            onClick={() => handleRowClick(seafarer.seafarerCode)}
+                            className="cursor-pointer"
+                          >
+                            <Eye className="mr-2 h-4 w-4" />
+                            View
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}

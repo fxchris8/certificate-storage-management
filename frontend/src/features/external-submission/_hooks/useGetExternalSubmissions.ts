@@ -16,16 +16,18 @@ export function useGetExternalSubmissions(
   page: number = 1,
   limit: number = 10,
   status?: string,
-  search?: string
+  search?: string,
+  seafarerCode?: string
 ) {
   return useQuery({
-    queryKey: ['external-submissions', page, limit, status, search],
+    queryKey: ['external-submissions', page, limit, status, search, seafarerCode],
     queryFn: async () => {
       const params = new URLSearchParams();
       params.set('page', page.toString());
       params.set('limit', limit.toString());
       if (status) params.set('status', status);
       if (search) params.set('search', search);
+      if (seafarerCode) params.set('seafarerCode', seafarerCode);
       const response = await api.get(`/external-submissions?${params.toString()}`);
       return response.data.data as PaginatedResponse;
     },

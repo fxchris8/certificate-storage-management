@@ -22,7 +22,7 @@ export function ExternalSubmissionDetailPage() {
     approve(
       { id: id!, data: { reviewNotes: reviewNotes.trim() || '' } },
       {
-        onSuccess: () => navigate('/dashboard/external-submissions'),
+        onSuccess: () => navigate(`/dashboard/external-submissions/seafarer/${submission?.seafarerCode}`),
       }
     );
   };
@@ -36,7 +36,7 @@ export function ExternalSubmissionDetailPage() {
     reject(
       { id: id!, data: { reviewNotes } },
       {
-        onSuccess: () => navigate('/dashboard/external-submissions'),
+        onSuccess: () => navigate(`/dashboard/external-submissions/seafarer/${submission?.seafarerCode}`),
       }
     );
   };
@@ -62,7 +62,7 @@ export function ExternalSubmissionDetailPage() {
   return (
     <div className="p-4 md:p-8 space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard/external-submissions')}>
+        <Button variant="ghost" size="sm" onClick={() => navigate(`/dashboard/external-submissions/seafarer/${submission?.seafarerCode}`)}>
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back
         </Button>
