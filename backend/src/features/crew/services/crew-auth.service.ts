@@ -104,12 +104,13 @@ export class CrewAuthService {
   async resetPassword(personId: string, newPassword: string) {
     try {
       const credential = await this.crewCredentialRepository.findByPersonId(personId);
-      if (!credential) {
-        return unifiedResponse(false, ERROR.CREW_NOT_FOUND);
-      }
-
       const passwordHash = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
-      await this.crewCredentialRepository.updatePassword(personId, passwordHash);
+
+      if (!credential) {
+        await this.crewCredentialRepository.create({ personId, passwordHash });
+      } else {
+        await this.crewCredentialRepository.updatePassword(personId, passwordHash);
+      }
 
       return unifiedResponse(true, SUCCESS.CREW_PASSWORD_RESET);
     } catch {
