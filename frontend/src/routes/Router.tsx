@@ -8,6 +8,7 @@ import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
 import { UserDashboardPage } from "@/features/user/pages/UserDashboardPage";
 import { CertificatesPage } from "@/features/dashboard/pages/CertificatesPage";
 import { ExternalSubmissionsPage } from "@/features/external-submission/pages/ExternalSubmissionsPage";
+import { ExternalSubmissionsSeafarerPage } from "@/features/external-submission/pages/ExternalSubmissionsSeafarerPage";
 import { ExternalSubmissionDetailPage } from "@/features/external-submission/pages/ExternalSubmissionDetailPage";
 
 // Crew feature imports
@@ -41,6 +42,7 @@ const Router = [
             { path: "users", element: <UserDashboardPage /> },
             { path: "certificates/:seafarercode", element: <CertificatesPage /> },
             { path: "external-submissions", element: <ExternalSubmissionsPage /> },
+            { path: "external-submissions/seafarer/:seafarercode", element: <ExternalSubmissionsSeafarerPage /> },
             { path: "external-submissions/:id", element: <ExternalSubmissionDetailPage /> },
         ]
       },

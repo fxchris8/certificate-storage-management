@@ -46,17 +46,19 @@ export class ExternalSubmissionService {
     }
   }
 
-  async getSubmissions(page?: number, limit?: number, status?: string, search?: string) {
+  async getSubmissions(page?: number, limit?: number, status?: string, search?: string, seafarerCode?: string) {
     try {
       const submissions = await this.externalSubmissionRepository.findAll(
         page,
         limit,
         status,
         search,
+        undefined, // personId
+        seafarerCode,
       );
 
       if (page && limit) {
-        const totalCount = await this.externalSubmissionRepository.count(status, search);
+        const totalCount = await this.externalSubmissionRepository.count(status, search, undefined, seafarerCode);
         return unifiedResponse(true, SUCCESS.EXTERNAL_SUBMISSION_FOUND, {
           submissions,
           pagination: {
@@ -69,6 +71,28 @@ export class ExternalSubmissionService {
       }
 
       return unifiedResponse(true, SUCCESS.EXTERNAL_SUBMISSION_FOUND, submissions);
+    } catch (error) {
+      return unifiedResponse(false, ERROR.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async getGroupedSeafarers(page?: number, limit?: number, search?: string) {
+    try {
+      const result = await this.externalSubmissionRepository.getGroupedSeafarers(page, limit, search);
+      
+      if (page && limit) {
+        return unifiedResponse(true, SUCCESS.EXTERNAL_SUBMISSION_FOUND, {
+          submissions: result.data,
+          pagination: {
+            page,
+            limit,
+            totalCount: result.totalCount,
+            totalPages: Math.ceil(result.totalCount / limit),
+          },
+        });
+      }
+
+      return unifiedResponse(true, SUCCESS.EXTERNAL_SUBMISSION_FOUND, result.data);
     } catch (error) {
       return unifiedResponse(false, ERROR.INTERNAL_SERVER_ERROR);
     }

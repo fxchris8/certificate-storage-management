@@ -46,6 +46,16 @@ class PostprocessService:
 
             "CERTIF1CATE": "CERTIFICATE",
             "CERTIFI CATE": "CERTIFICATE",
+
+            ".":" ",
+
+            # Roman numeral misreads setelah kata TINGKAT
+            "TINGKAT HI ": "TINGKAT III ",
+            "TINGKAT HI": "TINGKAT III",
+            "TINGKAT H ": "TINGKAT II ",
+            "TINGKAT H": "TINGKAT II",
+            "TINGKAT 1V": "TINGKAT IV",
+            "TINGKAT 1": "TINGKAT I",
         }
 
         result = text
@@ -56,7 +66,7 @@ class PostprocessService:
         result = result.replace("SAFETYTRAINING", "SAFETY TRAINING")
         result = result.replace("TRAININGREVALIDATION", "TRAINING REVALIDATION")
 
-        result = result.rstrip("'!I|1:.")
+        result = result.rstrip("'!|1:.")
 
         return result
     
@@ -66,9 +76,9 @@ class PostprocessService:
 
         cleaned = re.sub(r'\s+', '', raw_text)
 
-        match = re.search(r'62\d{13,14}', cleaned)
+        match = re.search(r'62[\dA-Z]{13,14}', cleaned, re.IGNORECASE)
         if match:
-            return match.group(0)
+            return match.group(0).upper()
 
         return None
 

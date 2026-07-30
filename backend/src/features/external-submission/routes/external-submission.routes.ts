@@ -63,6 +63,7 @@ router.get(
   externalSubmissionController.getSubmissionStatus,
 );
 router.get('/', auth, externalSubmissionController.getSubmissions);
+router.get('/grouped', auth, externalSubmissionController.getGroupedSeafarers);
 router.get('/:id', auth, externalSubmissionController.getSubmissionById);
 router.get('/:id/view', externalSubmissionController.viewFile);
 

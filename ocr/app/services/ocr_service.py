@@ -88,73 +88,98 @@ class OCRService:
         
         return text_blocks
     
+    # Baris subtitle/header yang TIDAK pernah menjadi nama training
+    _SUBTITLE_SKIP = {
+        "CERTIFICATE OF PROFICIENCY",
+        "CERTIFICATE OF COMPETENCY",
+        "SERTIFIKAT KETERAMPILAN",
+        "SERTIFIKAT KEAHLIAN",
+        "SERTIFIKAT KOMPETENSI",
+    }
+
     def _select_best_block(self, text_blocks: List[dict]) -> dict:
 
         candidates = []
-        
+
         for block in text_blocks:
             text = block["text"].strip()
-            
+
             # Skip very short text
             if len(text) < 5:
                 continue
-            
+
             # Skip text that's mostly numbers
             alpha_ratio = sum(c.isalpha() for c in text) / len(text) if text else 0
             if alpha_ratio < 0.5:
                 continue
-            
+
+            # Skip known subtitle/header lines yang bukan nama training
+            if text.upper() in self._SUBTITLE_SKIP:
+                logger.debug(f"Skipping subtitle block: '{text}'")
+                continue
+
             # Calculate score
             score = self._calculate_block_score(block)
             block["score"] = score
             candidates.append(block)
-        
+
         if not candidates:
             # Fallback: return largest block
             return max(text_blocks, key=lambda x: x["area"])
-        
+
         return max(candidates, key=lambda x: x["score"])
     
     def _calculate_block_score(self, block: dict) -> float:
         """
         Calculate ranking score for a text block.
-        
+
         Factors:
         - Confidence (weight: 0.3)
         - Area/size (weight: 0.3)
-        - Uppercase ratio (weight: 0.2)
+        - Mixed-case title style (weight: 0.2) — training names sering Title Case/mixed
         - Contains training keywords (weight: 0.2)
         """
         text = block["text"]
         confidence = block["confidence"]
         area = block["area"]
-        
+
         area_score = min(area / 500000, 1.0)
-        
-        # Uppercase ratio
-        upper_count = sum(1 for c in text if c.isupper())
-        upper_ratio = upper_count / len(text) if text else 0
-        
-        keywords = ["TRAINING", "SAFETY", "BASIC", "ADVANCED", "CERTIFICATE"]
+
+        alpha_chars = [c for c in text if c.isalpha()]
+        if alpha_chars:
+            upper_count = sum(1 for c in alpha_chars if c.isupper())
+            upper_ratio = upper_count / len(alpha_chars)
+            # Skor tertinggi untuk mixed-case (0.4-0.85 uppercase) → training name
+            if 0.4 <= upper_ratio <= 0.85:
+                case_score = 1.0  
+            elif upper_ratio > 0.85:
+                case_score = 0.5  
+            else:
+                case_score = 0.3   
+        else:
+            case_score = 0.0
+        keywords = ["TRAINING", "SAFETY", "BASIC", "ADVANCED",
+                    "KEAHLIAN", "AHLI", "REVALIDATION", "PROFICIENCY IN",
+                    "OFFICER", "MEDICAL", "SECURITY", "SURVIVAL", "RESCUE"]
         keyword_score = 0.0
         text_upper = text.upper()
         for keyword in keywords:
             if keyword in text_upper:
                 keyword_score += 0.2
         keyword_score = min(keyword_score, 1.0)
-        
+
         # Weighted score
         score = (
             confidence * 0.3 +
             area_score * 0.3 +
-            upper_ratio * 0.2 +
+            case_score * 0.2 +
             keyword_score * 0.2
         )
 
         return score
 
     def extract_cert_id(self, image: np.ndarray) -> RawOCRResult:
-        cert_pattern = re.compile(r'62\d{13,14}')
+        cert_pattern = re.compile(r'62[\dA-Z]{13,14}', re.IGNORECASE)
 
         try:
             results = self.ocr.ocr(image, cls=True)

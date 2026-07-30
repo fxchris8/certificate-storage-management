@@ -31,15 +31,16 @@ class Settings(BaseSettings):
 class CropConfig:
     X_START: float = 0.10
     X_END: float = 0.90
-    Y_START: float = 0.30
-    Y_END: float = 0.55
+    Y_START: float = 0.15
+    Y_END: float = 0.60
 
 
 class CertIdCropConfig:
     X_START: float = 0.45
     X_END: float = 1.00
-    Y_START: float = 0.10
+    Y_START: float = 0.05
     Y_END: float = 0.35
+
 
 
 settings = Settings()
