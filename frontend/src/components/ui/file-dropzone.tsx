@@ -123,6 +123,7 @@ const FileDropzone = React.forwardRef<HTMLDivElement, FileDropzoneProps>(
               type="file"
               accept="image/*"
               onChange={handleChange}
+              capture="environment"
               className="hidden"
               id="camera-input"
             />
