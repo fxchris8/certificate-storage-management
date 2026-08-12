@@ -32,18 +32,17 @@ def run_test():
         ocr_result = ocr_service.extract_text(processed)
 
         normalized = postprocess.normalize_text(ocr_result.raw_text)
-        status = postprocess.determine_status(ocr_result.confidence)
+        status = postprocess.determine_status(ocr_result.raw_text is not None)
 
         result = {
             "filename": image_path.name,
             "training_name": normalized,
-            "confidence": round(ocr_result.confidence, 3),
             "status": status,
             "raw_text": ocr_result.raw_text
         }
         results.append(result)
 
-        print(f"  -> {normalized} ({ocr_result.confidence:.1%})")
+        print(f"  -> {normalized}")
 
     output = {
         "timestamp": datetime.now().isoformat(),

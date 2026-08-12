@@ -4,8 +4,8 @@ OCR service for extracting training names from crew ship certificates.
 
 ## Tech Stack
 - FastAPI
-- PaddleOCR
-- OpenCV
+- ZAI SDK (`zai-sdk`, model `glm-ocr`)
+- Pillow
 
 
 ## Setup
@@ -40,7 +40,7 @@ pip install -r requirements.txt
 copy .env.example .env
 ```
 
-Edit `.env` to adjust confidence thresholds if needed.
+Edit `.env` and set `ZAI_API_KEY` from z.ai. You can also adjust confidence thresholds if needed.
 
 ### 5. Run Server
 
@@ -87,9 +87,8 @@ Body: image (file)
 ```
 
 **Status Values:**
-- `auto_approved`: confidence >= 85%
-- `needs_review`: confidence >= 60%
-- `failed`: confidence < 60%
+- `success`
+- `failed` 
 
 ## Project Structure
 
@@ -101,8 +100,8 @@ crew-certificate-ocr/
 │   ├── api/
 │   │   └── ocr.py           # API endpoints
 │   ├── services/
-│   │   ├── preprocessing.py # Image preprocessing
-│   │   ├── ocr_service.py   # PaddleOCR wrapper
+│   │   ├── preprocessing.py # ROI crop preprocessing
+│   │   ├── ocr_service.py   # ZAI OCR wrapper
 │   │   └── postprocess.py   # Text normalization
 │   └── schemas/
 │       └── ocr.py           # Pydantic models

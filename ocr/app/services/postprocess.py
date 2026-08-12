@@ -84,19 +84,12 @@ class PostprocessService:
 
     def determine_status(
         self,
-        confidence: float
-    ) -> Literal["auto_approved", "needs_review", "failed"]:
+        success: bool
+    ) -> Literal["success", "failed"]:
         """
-        Determine processing status based on confidence threshold.
-        
-        Thresholds (from config):
-        - >= 0.85: auto_approved
-        - >= 0.60: needs_review
-        - < 0.60: failed
+        Determine processing status based on extraction success.
         """
-        if confidence >= settings.CONFIDENCE_AUTO_APPROVE:
-            return "auto_approved"
-        elif confidence >= settings.CONFIDENCE_NEEDS_REVIEW:
-            return "needs_review"
+        if success:
+            return "success"
         else:
             return "failed"

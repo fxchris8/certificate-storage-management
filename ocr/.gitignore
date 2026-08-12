@@ -21,9 +21,6 @@ ocr-certi/
 .coverage
 htmlcov/
 
-# PaddleOCR models (will be downloaded automatically)
-~/.paddleocr/
-
 # Logs
 *.log
 logs/

@@ -88,18 +88,12 @@
             <label>Training Name:</label>
             <span id="trainingName"></span>
         </div>
-        <div class="result-item">
-            <label>Confidence (Training Name):</label>
-            <span id="confidence"></span>
-        </div>
+
         <div class="result-item">
             <label>Certificate No:</label>
             <span id="certificateId"></span>
         </div>
-        <div class="result-item">
-            <label>Confidence (Certificate No):</label>
-            <span id="confidenceId"></span>
-        </div>
+
         <div class="result-item">
             <label>Status:</label>
             <span id="status"></span>
@@ -184,12 +178,7 @@
                     const d = data.data;
 
                     document.getElementById('trainingName').textContent = d.training_name;
-                    document.getElementById('confidence').textContent = (d.confidence * 100).toFixed(1) + '%';
-
                     document.getElementById('certificateId').textContent = d.certificate_id || '-';
-                    document.getElementById('confidenceId').textContent = d.certificate_id
-                        ? (d.confidence_id * 100).toFixed(1) + '%'
-                        : '-';
 
                     document.getElementById('rawText').textContent = d.raw_text || '-';
 
