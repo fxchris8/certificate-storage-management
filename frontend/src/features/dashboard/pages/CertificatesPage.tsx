@@ -179,13 +179,11 @@ interface ScanPreviewItem {
   originalName: string;
   filePath: string;
   trainingName: string;
-  confidence: number;
   status: string;
   nomorSertifikat: string;
   isEditing: boolean;
   editedName: string;
   certificate_id?: string;
-  confidence_id?: number;
   raw_text?: string;
   isEditingNomor?: boolean;
 }
@@ -1194,18 +1192,13 @@ export function CertificatesPage() {
                       </span>
                       <span
                         className={cn(
-                          "text-xs px-2 py-0.5 rounded-full font-medium",
-                          item.status === "auto_approved"
+                          "text-xs px-2 py-0.5 rounded-full font-medium uppercase",
+                          item.status === "success"
                             ? "bg-green-100 text-green-700"
-                            : item.status === "failed" ||
-                                item.status === "error"
-                              ? "bg-red-100 text-red-700"
-                              : "bg-yellow-100 text-yellow-700",
+                            : "bg-red-100 text-red-700",
                         )}
                       >
-                        {item.status === "auto_approved" ? "Auto" : item.status}
-                        {item.confidence > 0 &&
-                          ` (${(item.confidence * 100).toFixed(0)}%)`}
+                        {item.status}
                       </span>
                     </div>
 

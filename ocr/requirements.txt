@@ -5,11 +5,8 @@ python-multipart==0.0.6
 setuptools>=65.0.0
 
 # OCR & Image Processing
-paddleocr==2.7.3
-paddlepaddle==3.0.0
-opencv-python<=4.6.0.66
+zai-sdk
 Pillow==10.2.0
-numpy<2.0.0
 
 # Utilities
 python-dotenv==1.0.0

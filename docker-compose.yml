@@ -88,6 +88,7 @@ services:
     restart: unless-stopped
     environment:
       PYTHONUNBUFFERED: 1
+      ZAI_API_KEY: ${ZAI_API_KEY:?Set ZAI_API_KEY in root .env}
     ports:
       - "${OCR_PORT:-8000}:8000"
     networks:
@@ -95,7 +96,6 @@ services:
     volumes:
       - ./ocr/samples:/app/samples
       - ./ocr/results:/app/results
-      - paddleocr_models:/root/.paddleocr
 
 networks:
   certificate-network:
@@ -104,4 +104,3 @@ networks:
 volumes:
   postgres_data:
   certificate_uploads:
-  paddleocr_models:

@@ -4,16 +4,6 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    libgl1 \
-    libglib2.0-0 \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
-    libgomp1 \
-    && rm -rf /var/lib/apt/lists/*
-
 # Copy requirements first for better caching
 COPY requirements.txt .
 
@@ -25,9 +15,6 @@ COPY . .
 
 # Create necessary directories
 RUN mkdir -p samples results static
-
-# Pre-download PaddleOCR models during build (avoid slow runtime download)
-RUN python -c "from paddleocr import PaddleOCR; PaddleOCR(use_angle_cls=True, lang='en', use_gpu=False, show_log=True)"
 
 # Expose port
 EXPOSE 8000

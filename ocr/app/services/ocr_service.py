@@ -1,95 +1,17 @@
-from paddleocr import PaddleOCR
-import numpy as np
-import re
-from typing import List
+import base64
 import logging
+import re
+from typing import Any, ClassVar
 
 from app.config import settings
 from app.schemas.ocr import RawOCRResult
+from zai import ZaiClient
 
 logger = logging.getLogger(__name__)
 
 
-class OCRService:    
-    def __init__(self):
-        logger.info("Initializing PaddleOCR...")
-        
-        self.ocr = PaddleOCR(
-            use_angle_cls=True,      
-            lang=settings.OCR_LANG,  
-            use_gpu=settings.OCR_USE_GPU,
-            show_log=False           
-        )
-        
-        logger.info("PaddleOCR initialized successfully")
-    
-    def extract_text(self, image: np.ndarray) -> RawOCRResult:
-        try:
-            results = self.ocr.ocr(image, cls=True)
-            
-            if not results or not results[0]:
-                logger.warning("No text detected in image")
-                return RawOCRResult(
-                    raw_text=None,
-                    confidence=0.0,
-                    all_blocks=[]
-                )
-            
-            text_blocks = self._parse_results(results[0])
-            
-            if not text_blocks:
-                return RawOCRResult(
-                    raw_text=None,
-                    confidence=0.0,
-                    all_blocks=[]
-                )
-            
-            best_block = self._select_best_block(text_blocks)
-            
-            logger.info(f"Extracted: '{best_block['text']}' (conf: {best_block['confidence']:.2f})")
-            
-            return RawOCRResult(
-                raw_text=best_block["text"],
-                confidence=best_block["confidence"],
-                all_blocks=text_blocks
-            )
-            
-        except Exception as e:
-            logger.error(f"OCR extraction failed: {str(e)}")
-            raise
-    
-    def _parse_results(self, ocr_results: list) -> List[dict]:
-    
-        text_blocks = []
-        
-        for item in ocr_results:
-            if len(item) != 2:
-                continue
-                
-            bbox_points, text_conf = item
-            text, confidence = text_conf
-            
-            # Calculate bounding box area for ranking
-            x_coords = [p[0] for p in bbox_points]
-            y_coords = [p[1] for p in bbox_points]
-            
-            width = max(x_coords) - min(x_coords)
-            height = max(y_coords) - min(y_coords)
-            area = width * height
-            
-            text_blocks.append({
-                "text": text,
-                "confidence": confidence,
-                "bbox": bbox_points,
-                "area": area,
-                "width": width,
-                "height": height
-            })
-        
-        return text_blocks
-    
-    # Baris subtitle/header yang TIDAK pernah menjadi nama training
-    _SUBTITLE_SKIP = {
+class OCRService:
+    _EXACT_SKIP: ClassVar[set[str]] = {
         "CERTIFICATE OF PROFICIENCY",
         "CERTIFICATE OF COMPETENCY",
         "SERTIFIKAT KETERAMPILAN",
@@ -97,123 +19,282 @@ class OCRService:
         "SERTIFIKAT KOMPETENSI",
     }
 
-    def _select_best_block(self, text_blocks: List[dict]) -> dict:
+    _SUBSTRING_SKIP: ClassVar[set[str]] = {
+        "KEMENTERIAN PERHUBUNGAN",
+        "MINISTRY OF TRANSPORTATION",
+        "DIREKTORAT JENDERAL",
+        "DIRECTORATE GENERAL",
+        "REPUBLIK INDONESIA",
+        "REPUBLIC OF INDONESIA",
+    }
 
-        candidates = []
+    _CERT_ID_PATTERN: ClassVar[re.Pattern[str]] = re.compile(
+        r"62[\dA-Z]{13,14}", re.IGNORECASE
+    )
 
-        for block in text_blocks:
-            text = block["text"].strip()
+    def __init__(self):
+        logger.info("Initializing ZAI OCR client...")
+        self.client = ZaiClient(api_key=settings.ZAI_API_KEY)
+        logger.info("ZAI OCR client initialized successfully")
 
-            # Skip very short text
-            if len(text) < 5:
+    def extract_text(self, image_bytes: bytes) -> RawOCRResult:
+        try:
+            markdown = self._run_layout_parsing(image_bytes)
+            if not markdown:
+                logger.warning("No markdown output from layout parsing")
+                return RawOCRResult(raw_text=None, all_blocks=[])
+
+            lines = self._extract_clean_lines(markdown)
+            best_text = self._select_best_training_line(lines)
+
+            if not best_text:
+                logger.warning("No training-name candidate extracted from OCR markdown")
+                return RawOCRResult(raw_text=None, all_blocks=[])
+
+            logger.info("Extracted training text: '%s'", best_text)
+            return RawOCRResult(
+                raw_text=best_text,
+                all_blocks=[{"text": best_text, "bbox": []}],
+            )
+
+        except Exception as e:
+            logger.error("OCR extraction failed: %s", str(e))
+            raise
+
+    def extract_cert_id(self, image_bytes: bytes) -> RawOCRResult:
+        try:
+            markdown = self._run_layout_parsing(image_bytes)
+            if not markdown:
+                logger.warning("No markdown output from cert ID OCR")
+                return RawOCRResult(raw_text=None, all_blocks=[])
+
+            cert_id = self._extract_cert_id_from_text(markdown)
+            if not cert_id:
+                logger.warning("No cert ID pattern matched in OCR markdown")
+                return RawOCRResult(raw_text=None, all_blocks=[])
+
+            logger.info("Extracted cert ID: '%s'", cert_id)
+            return RawOCRResult(
+                raw_text=cert_id,
+                all_blocks=[{"text": cert_id, "bbox": []}],
+            )
+
+        except Exception as e:
+            logger.error("Cert ID extraction failed: %s", str(e))
+            raise
+
+    def _run_layout_parsing(self, image_bytes: bytes) -> str:
+        b64 = base64.b64encode(image_bytes).decode("utf-8")
+        data_uri = f"data:image/jpeg;base64,{b64}"
+
+        response = self.client.layout_parsing.create(model="glm-ocr", file=data_uri)
+        return self._extract_markdown(response)
+
+    def _extract_markdown(self, response: Any) -> str:
+        # Common direct cases
+        if isinstance(response, str):
+            return response.strip()
+
+        for attr in ("output_text", "markdown", "text", "content", "result"):
+            value = getattr(response, attr, None)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+
+        # Dict/list recursive fallback (SDK structure may vary)
+        found = self._find_text_value(response)
+        if found:
+            return found.strip()
+
+        logger.warning("Could not extract markdown. Raw API response: %s", response)
+        return ""
+
+    def _find_text_value(self, value: Any, depth: int = 0) -> str | None:
+        if depth > 6 or value is None:
+            return None
+
+        if isinstance(value, str):
+            return value if value.strip() else None
+
+        if isinstance(value, dict):
+            preferred_keys = ["markdown", "output_text", "text", "content", "result"]
+
+            # 1. Coba cari di preferred keys dulu
+            for key in preferred_keys:
+                if key in value:
+                    found = self._find_text_value(value[key], depth + 1)
+                    if found:
+                        return found
+
+            # 2. Jika tidak ada, telusuri semua value dan gabungkan teks yang ditemukan
+            found_texts = []
+            for _, v in value.items():
+                if isinstance(v, (dict, list, tuple)):
+                    found = self._find_text_value(v, depth + 1)
+                    if found:
+                        found_texts.append(found)
+
+            if found_texts:
+                return "\n".join(found_texts)
+
+            return None
+
+        if isinstance(value, (list, tuple)):
+            found_texts = []
+            for item in value:
+                found = self._find_text_value(item, depth + 1)
+                if found:
+                    found_texts.append(found)
+
+            if found_texts:
+                return "\n".join(found_texts)
+
+            return None
+
+        # Pydantic/dataclass-like object fallback
+        if hasattr(value, "model_dump"):
+            try:
+                return self._find_text_value(value.model_dump(), depth + 1)
+            except Exception:
+                return None
+
+        if hasattr(value, "__dict__"):
+            return self._find_text_value(vars(value), depth + 1)
+
+        return None
+
+    def _extract_clean_lines(self, markdown: str) -> list[str]:
+        lines: list[str] = []
+
+        for raw_line in markdown.splitlines():
+            line = raw_line.strip()
+            if not line:
                 continue
 
-            # Skip text that's mostly numbers
+            # strip basic markdown syntax
+            line = re.sub(r"^[#>*\-\s]+", "", line)
+            line = re.sub(r"[*#_]+", "", line)
+            line = line.replace("`", "")
+            line = line.replace("|", " ")
+            line = re.sub(r"\s+", " ", line).strip()
+
+            if line:
+                lines.append(line)
+
+        return lines
+
+    def _select_best_training_line(self, lines: list[str]) -> str | None:
+        candidates = []
+
+        for line in lines:
+            text = line.strip()
+            # Abaikan baris yang terlalu pendek atau terlalu panjang (berupa paragraf)
+            if len(text) < 5 or len(text) > 120:
+                continue
+
+            if text.upper() in self._EXACT_SKIP:
+                continue
+
+            if any(skip in text.upper() for skip in self._SUBSTRING_SKIP):
+                continue
+
+            compact = re.sub(r"\s+", "", text)
+            if self._CERT_ID_PATTERN.search(compact):
+                continue
+
             alpha_ratio = sum(c.isalpha() for c in text) / len(text) if text else 0
             if alpha_ratio < 0.5:
                 continue
 
-            # Skip known subtitle/header lines yang bukan nama training
-            if text.upper() in self._SUBTITLE_SKIP:
-                logger.debug(f"Skipping subtitle block: '{text}'")
-                continue
-
-            # Calculate score
-            score = self._calculate_block_score(block)
-            block["score"] = score
-            candidates.append(block)
+            score = self._training_line_score(text)
+            candidates.append((score, text))
 
         if not candidates:
-            # Fallback: return largest block
-            return max(text_blocks, key=lambda x: x["area"])
+            # fallback: longest line that still has letters (excluding subtitle skip and paragraphs)
+            letter_lines = [
+                line
+                for line in lines
+                if any(c.isalpha() for c in line)
+                and line.strip().upper() not in self._EXACT_SKIP
+                and not any(
+                    skip in line.strip().upper() for skip in self._SUBSTRING_SKIP
+                )
+                and 5 <= len(line.strip()) <= 120
+            ]
+            if not letter_lines:
+                return None
+            return max(letter_lines, key=len)
 
-        return max(candidates, key=lambda x: x["score"])
-    
-    def _calculate_block_score(self, block: dict) -> float:
-        """
-        Calculate ranking score for a text block.
+        candidates.sort(key=lambda x: x[0], reverse=True)
+        return candidates[0][1]
 
-        Factors:
-        - Confidence (weight: 0.3)
-        - Area/size (weight: 0.3)
-        - Mixed-case title style (weight: 0.2) — training names sering Title Case/mixed
-        - Contains training keywords (weight: 0.2)
-        """
-        text = block["text"]
-        confidence = block["confidence"]
-        area = block["area"]
-
-        area_score = min(area / 500000, 1.0)
-
-        alpha_chars = [c for c in text if c.isalpha()]
-        if alpha_chars:
-            upper_count = sum(1 for c in alpha_chars if c.isupper())
-            upper_ratio = upper_count / len(alpha_chars)
-            # Skor tertinggi untuk mixed-case (0.4-0.85 uppercase) → training name
-            if 0.4 <= upper_ratio <= 0.85:
-                case_score = 1.0  
-            elif upper_ratio > 0.85:
-                case_score = 0.5  
-            else:
-                case_score = 0.3   
-        else:
-            case_score = 0.0
-        keywords = ["TRAINING", "SAFETY", "BASIC", "ADVANCED",
-                    "KEAHLIAN", "AHLI", "REVALIDATION", "PROFICIENCY IN",
-                    "OFFICER", "MEDICAL", "SECURITY", "SURVIVAL", "RESCUE"]
-        keyword_score = 0.0
+    def _training_line_score(self, text: str) -> float:
         text_upper = text.upper()
+
+        keywords = [
+            "TRAINING",
+            "SAFETY",
+            "BASIC",
+            "ADVANCED",
+            "KEAHLIAN",
+            "AHLI",
+            "REVALIDATION",
+            "PROFICIENCY IN",
+            "OFFICER",
+            "MEDICAL",
+            "SECURITY",
+            "SURVIVAL",
+            "RESCUE",
+            "TEKNIKA",
+            "TEHNIKA",
+            "NAUTIKA",
+            "MANAGEMENT",
+            "MANAJEMEN",
+            "CLASS",
+            "TINGKAT",
+            "OPERASIONAL",
+            "OPERATIONAL",
+            "ENGINEER",
+            "GMDSS",
+            "RADIO",
+            "OPERATOR",
+        ]
+
+        keyword_score = 0.0
         for keyword in keywords:
             if keyword in text_upper:
-                keyword_score += 0.2
-        keyword_score = min(keyword_score, 1.0)
+                keyword_score += 0.3
 
-        # Weighted score
-        score = (
-            confidence * 0.3 +
-            area_score * 0.3 +
-            case_score * 0.2 +
-            keyword_score * 0.2
+        keyword_score = min(keyword_score, 1.5)
+
+        alpha_chars = [c for c in text if c.isalpha()]
+        upper_ratio = (
+            sum(1 for c in alpha_chars if c.isupper()) / len(alpha_chars)
+            if alpha_chars
+            else 0.0
         )
 
-        return score
+        if 0.4 <= upper_ratio <= 0.95:
+            case_score = 0.7
+        elif upper_ratio > 0.95:
+            case_score = 0.4
+        else:
+            case_score = 0.3
 
-    def extract_cert_id(self, image: np.ndarray) -> RawOCRResult:
-        cert_pattern = re.compile(r'62[\dA-Z]{13,14}', re.IGNORECASE)
+        # Skor panjang teks: nama pelatihan idealnya sekitar 20-60 karakter.
+        # Kalimat yang terlalu panjang (misal > 60 karakter) kemungkinan adalah penjelasan.
+        l = len(text)
+        if l <= 60:
+            length_score = l / 60.0
+        else:
+            # Kurangi skor jika panjangnya melebihi 60 (jatuh ke 0 saat panjangnya mencapai 100)
+            length_score = max(1.0 - ((l - 60) / 40.0), 0.0)
 
-        try:
-            results = self.ocr.ocr(image, cls=True)
+        return keyword_score + case_score + length_score
 
-            if not results or not results[0]:
-                logger.warning("No text detected in cert ID region")
-                return RawOCRResult(raw_text=None, confidence=0.0, all_blocks=[])
+    def _extract_cert_id_from_text(self, text: str) -> str | None:
+        cleaned = re.sub(r"\s+", "", text)
+        match = self._CERT_ID_PATTERN.search(cleaned)
+        if match:
+            return match.group(0).upper()
 
-            text_blocks = self._parse_results(results[0])
-
-            if not text_blocks:
-                return RawOCRResult(raw_text=None, confidence=0.0, all_blocks=[])
-
-            best_block = None
-            best_confidence = 0.0
-
-            for block in text_blocks:
-                cleaned = re.sub(r'\s+', '', block["text"])
-                if cert_pattern.search(cleaned):
-                    if block["confidence"] > best_confidence:
-                        best_block = block
-                        best_confidence = block["confidence"]
-
-            if best_block:
-                logger.info(f"Cert ID found: '{best_block['text']}' (conf: {best_block['confidence']:.2f})")
-                return RawOCRResult(
-                    raw_text=best_block["text"],
-                    confidence=best_block["confidence"],
-                    all_blocks=text_blocks
-                )
-
-            logger.warning("No cert ID pattern matched in region")
-            return RawOCRResult(raw_text=None, confidence=0.0, all_blocks=text_blocks)
-
-        except Exception as e:
-            logger.error(f"Cert ID extraction failed: {str(e)}")
-            raise
+        return None

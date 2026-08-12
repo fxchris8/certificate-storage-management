@@ -44,7 +44,7 @@ export function CrewLayout() {
       <main className="flex-1 flex flex-col overflow-hidden transition-all duration-300">
         {/* Header */}
         <header className="flex h-20 items-center justify-between border-b border-zinc-200/60 bg-white/80 px-4 md:px-8 backdrop-blur-sm z-10 dark:bg-zinc-950/80 dark:border-zinc-800">
-          <div className="flex items-center gap-4 w-full max-w-lg">
+          <div className="flex items-center gap-4">
             {/* Desktop collapse toggle */}
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -64,14 +64,16 @@ export function CrewLayout() {
 
           {/* Right side — Crew info */}
           <div className="flex items-center space-x-6">
-            <div className="flex items-center gap-3 pl-6 border-l border-zinc-200 dark:border-zinc-800">
-              <div className="hidden md:flex flex-col items-end">
-                <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+            <div className="flex items-center gap-2 md:gap-3 pl-3 md:pl-6 border-l border-zinc-200 dark:border-zinc-800">
+              <div className="flex flex-col items-end max-w-[180px] md:max-w-none">
+                <span className="text-xs md:text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate w-full text-right">
                   {crew?.name || "Crew"}
                 </span>
-                <span className="text-xs text-zinc-500">{crew?.seafarercode || "Crew Portal"}</span>
+                <span className="text-xs md:text-xs text-zinc-500 truncate w-full text-left">
+                  {crew?.seafarercode || "Crew Portal"}
+                </span>
               </div>
-              <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-teal-600 to-teal-400 flex items-center justify-center text-white font-bold shadow-md shadow-teal-500/20">
+              <div className="h-9 w-9 md:h-10 md:w-10 rounded-full bg-gradient-to-tr from-teal-600 to-teal-400 flex items-center justify-center text-white font-bold shadow-md shadow-teal-500/20 shrink-0">
                 {(crew?.name || "C").charAt(0).toUpperCase()}
               </div>
             </div>

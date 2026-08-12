@@ -14,10 +14,8 @@ export interface OcrScanResult {
   originalName: string;
   filePath: string;
   trainingName: string;
-  confidence: number;
   status: string;
   certificate_id?: string;
-  confidence_id?: number;
   raw_text?: string;
 }
 

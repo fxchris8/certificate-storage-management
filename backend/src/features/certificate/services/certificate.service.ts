@@ -188,7 +188,6 @@ export class CertificateService {
             originalName: file.originalname,
             filePath: '',
             trainingName: '',
-            confidence: 0,
             status: 'error',
           });
           continue;
@@ -198,10 +197,8 @@ export class CertificateService {
           success: boolean;
           data?: {
             training_name: string;
-            confidence: number;
             status: string;
             certificate_id: string;
-            confidence_id: number;
             raw_text: string;
           };
           error?: string;
@@ -212,10 +209,8 @@ export class CertificateService {
             originalName: file.originalname,
             filePath: '', // File is not saved to disk yet
             trainingName: data.data.training_name,
-            confidence: data.data.confidence,
             status: data.data.status,
             certificate_id: data.data.certificate_id,
-            confidence_id: data.data.confidence_id,
             raw_text: data.data.raw_text,
           });
         } else {
@@ -223,7 +218,6 @@ export class CertificateService {
             originalName: file.originalname,
             filePath: '',
             trainingName: '',
-            confidence: 0,
             status: 'failed',
           });
         }
@@ -233,7 +227,6 @@ export class CertificateService {
           originalName: file.originalname,
           filePath: '',
           trainingName: '',
-          confidence: 0,
           status: 'error',
         });
       }
